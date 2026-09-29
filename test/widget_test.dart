@@ -37,5 +37,14 @@ void main() {
     await tester.tap(find.text('이 줄을 탭하면 완료돼요'));
     await tester.pump();
     expect(store.data.tasks.first.done, isTrue);
+
+    // 칩을 누르면 키보드가 유지되고, 입력 영역 밖을 탭하면 내려간다.
+    await tester.tap(find.text('done'));
+    await tester.pump();
+    expect(tester.testTextInput.isVisible, isTrue);
+
+    await tester.tap(find.text('TODO [Version 1.0.0]'));
+    await tester.pump();
+    expect(tester.testTextInput.isVisible, isFalse);
   });
 }

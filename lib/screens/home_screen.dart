@@ -182,6 +182,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             : ListView.builder(
                                 controller: _scroll,
                                 padding: EdgeInsets.zero,
+                                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                                 itemCount: visible.length,
                                 itemBuilder: (context, i) {
                                   final t = visible[i];
@@ -224,6 +225,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _footer(TermPalette p) {
+    // 이 영역 안의 탭(칩, 실행 버튼)은 '입력창 밖'으로 치지 않아 키보드가 유지된다.
+    return TextFieldTapRegion(child: _footerBody(p));
+  }
+
+  Widget _footerBody(TermPalette p) {
     return Container(
       decoration: BoxDecoration(
         color: p.bar,
@@ -282,6 +288,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             hintStyle: termStyle(p.dim, size: 16, height: 1.2),
                           ),
                           onChanged: (_) => _histIdx = null,
+                          // 입력 영역(칩, 실행 버튼 포함) 밖을 탭하면 키보드를 내린다.
+                          onTapOutside: (_) => _focus.unfocus(),
                           onSubmitted: (v) => _run(v, fromInput: true),
                           // 비워두면 Enter 후에도 키보드가 닫히지 않는다.
                           onEditingComplete: () {},
