@@ -44,6 +44,8 @@ const C = IP ? { w:440, h:956, appW:390, appH:844, frameTop:178, screenW:350, be
                  capTop:52, pSize:13, tSize:33, sSize:14 }
              : { w:1032, h:1376, appW:680, appH:907, frameTop:290, screenW:760, bezel:14, rFrame:40, rScreen:26, statusH:24, homeH:20,
                  capTop:80, pSize:20, tSize:54, sSize:22 };
+// 6.5인치 (1284x2778 = 428x926 @3x)
+if (IP && q.get('size') === '65') Object.assign(C, { w:428, h:926, frameTop:170, screenW:338, capTop:48 });
 C.screenH = Math.round(C.screenW * C.appH / C.appW);
 
 const TASKS = [
