@@ -16,8 +16,10 @@ const _entries = <(String, String, String, String?)>[
   ('clear', '', '완료된 항목을 한 번에 정리해요. 통계 기록은 남아요.', null),
   ('cls', '', '화면 로그만 지워요. 할 일은 그대로예요.', null),
   ('stats', '', '완료 기록, 연속 달성일, 태그별 통계.', null),
-  ('theme', '[cmd | phosphor | amber]', '색 테마 변경.', 'theme amber'),
-  ('crt', '[on | off]', '옛날 모니터 같은 주사선 효과.', null),
+  ('theme', '[cmd | phosphor | amber]', '색 테마 변경. phosphor · amber 는 PRO.', 'theme amber'),
+  ('crt', '[on | off]', '옛날 모니터 같은 주사선 효과. (PRO)', null),
+  ('upgrade', '', 'PRO 소개와 구매. 테마 · 위젯 · CRT 를 한 번 결제로 열어요.', null),
+  ('restore', '', '예전에 산 PRO 를 다시 불러와요. (기기 변경, 재설치)', null),
 ];
 
 class HelpScreen extends StatelessWidget {

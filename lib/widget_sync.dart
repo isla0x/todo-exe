@@ -26,10 +26,10 @@ class WidgetSync {
     }
   }
 
-  static Future<void> push(TodoData d, DateTime now) async {
+  static Future<void> push(TodoData d, DateTime now, {required bool pro}) async {
     if (!_supported) return;
     try {
-      await HomeWidget.saveWidgetData<String>(snapshotKey, jsonEncode(widgetSnapshot(d, now)));
+      await HomeWidget.saveWidgetData<String>(snapshotKey, jsonEncode(widgetSnapshot(d, now, pro: pro)));
       await HomeWidget.updateWidget(iOSName: iOSWidgetKind);
     } catch (e) {
       // 위젯 타깃이 아직 없거나 App Group 이 꺼져 있어도 앱은 계속 동작해야 한다.
@@ -39,15 +39,18 @@ class WidgetSync {
 }
 
 /// 위젯이 읽는 JSON. Swift 쪽 `TodoSnapshot` 과 키가 같아야 한다.
-Map<String, dynamic> widgetSnapshot(TodoData d, DateTime now, {int maxItems = 8}) {
+///
+/// [pro] 가 false 면 위젯은 잠금 화면('Access is denied.')을 그리고, 테마는 cmd 로 고정된다.
+Map<String, dynamic> widgetSnapshot(TodoData d, DateTime now, {bool pro = false, int maxItems = 8}) {
   final todo = d.tasks.where((t) => !t.done).toList()
     ..sort((a, b) {
       final byPriority = b.priority.compareTo(a.priority);
       return byPriority != 0 ? byPriority : a.id.compareTo(b.id);
     });
   return {
-    'v': 1,
-    'theme': d.theme,
+    'v': 2,
+    'pro': pro,
+    'theme': pro ? d.theme : freeTheme,
     'done': d.doneCount,
     'total': d.tasks.length,
     'streak': Stats.compute(d, now).streak,

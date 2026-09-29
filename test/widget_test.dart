@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:todo_exe/main.dart';
+import 'package:todo_exe/pro/pro_controller.dart';
 import 'package:todo_exe/state/todo_store.dart';
 
 void main() {
@@ -46,5 +47,55 @@ void main() {
     await tester.tap(find.text('TODO [Version 1.0.0]'));
     await tester.pump();
     expect(tester.testTextInput.isVisible, isFalse);
+  });
+
+  testWidgets('무료: 테마 잠김 → upgrade 화면 → (dev) PRO 켜면 테마 변경', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final pro = ProController(); // init() 을 부르지 않으면 스토어에 연결하지 않는다.
+    final store = TodoStore(clock: () => DateTime(2026, 9, 29, 13), pro: pro);
+    await store.load();
+
+    await tester.pumpWidget(TodoExeApp(store: store));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.tap(find.text('시작하기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    Future<void> type(String cmd) async {
+      await tester.enterText(find.byType(TextField), cmd);
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await tester.pump();
+    }
+
+    // 무료 사용자는 제목줄에 PRO 링크가 있고, amber 테마가 거부된다.
+    expect(find.text('PRO'), findsOneWidget);
+    await type('theme amber');
+    expect(find.text('Access is denied.'), findsOneWidget);
+    expect(store.palette.id, 'cmd');
+
+    // upgrade → PRO 화면
+    await type('upgrade');
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('todo.exe PRO'), findsOneWidget);
+    expect(find.text('스토어에 연결되지 않았어요.'), findsOneWidget);
+
+    await tester.tap(find.text('구매하기'));
+    await tester.pump();
+    expect(find.textContaining('스토어에 연결할 수 없어요'), findsOneWidget);
+
+    await tester.tap(find.text('[ ESC ] 닫기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // 디버그 빌드 전용 명령으로 PRO 를 켜면 테마를 바꿀 수 있고 PRO 링크가 사라진다.
+    await type('pro --dev');
+    expect(store.isPro, isTrue);
+    await type('theme amber');
+    expect(store.palette.id, 'amber');
+    expect(find.text('PRO'), findsNothing);
   });
 }

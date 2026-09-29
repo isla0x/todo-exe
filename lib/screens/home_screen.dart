@@ -9,6 +9,7 @@ import '../state/todo_store.dart';
 import '../theme/term_palette.dart';
 import '../widgets/term_widgets.dart';
 import 'help_screen.dart';
+import 'pro_screen.dart';
 import 'stats_screen.dart';
 
 /// 메인 화면: 할 일 목록 + 명령어 입력창.
@@ -62,7 +63,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _open(String route) {
-    final page = route == 'stats' ? StatsScreen(store: store) : HelpScreen(store: store);
+    if (route == 'restore') store.pro?.restore();
+    final Widget page = switch (route) {
+      'stats' => StatsScreen(store: store),
+      'pro' || 'restore' => ProScreen(store: store),
+      _ => HelpScreen(store: store),
+    };
+    _focus.unfocus();
     Navigator.of(context).push(termRoute(page));
   }
 
@@ -130,6 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 now: store.now(),
                 onStats: () => _open('stats'),
                 onHelp: () => _open('help'),
+                onPro: store.isPro ? null : () => _open('pro'),
               ),
               Expanded(
                 child: Padding(

@@ -27,6 +27,8 @@ struct TodoItem: Decodable, Hashable {
 }
 
 struct TodoSnapshot: Decodable {
+    /// PRO 결제 여부. 예전 버전 데이터에는 없을 수 있다.
+    let pro: Bool?
     let theme: String
     let done: Int
     let total: Int
@@ -34,11 +36,12 @@ struct TodoSnapshot: Decodable {
     let todo: [TodoItem]
 
     var left: Int { max(0, total - done) }
+    var isPro: Bool { pro ?? false }
 
-    static let empty = TodoSnapshot(theme: "cmd", done: 0, total: 0, streak: 0, todo: [])
+    static let empty = TodoSnapshot(pro: false, theme: "cmd", done: 0, total: 0, streak: 0, todo: [])
 
     static let sample = TodoSnapshot(
-        theme: "cmd", done: 3, total: 7, streak: 12,
+        pro: true, theme: "cmd", done: 3, total: 7, streak: 12,
         todo: [
             TodoItem(n: "#01", t: "주간 보고서 초안 작성", p: 2, g: "work"),
             TodoItem(n: "#03", t: "앱 온보딩 와이어프레임", p: 1, g: "side"),
@@ -128,8 +131,8 @@ struct Provider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (TodoEntry) -> Void) {
         let snap = TodoSnapshot.load()
-        // 위젯 고르는 화면에서 아직 데이터가 없으면 예시를 보여준다.
-        completion(TodoEntry(date: .now, snap: context.isPreview && snap.total == 0 ? .sample : snap))
+        // 위젯 고르는 화면에서는 어떤 모습인지 보이도록 예시를 보여준다.
+        completion(TodoEntry(date: .now, snap: context.isPreview ? .sample : snap))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TodoEntry>) -> Void) {
@@ -285,6 +288,70 @@ struct LockInlineView: View {
     }
 }
 
+// MARK: - PRO 가 아닐 때
+
+/// 홈 화면: cmd 권한 오류처럼 보이는 잠금 화면
+struct LockedHomeView: View {
+    let date: Date
+    let family: WidgetFamily
+    private let c = TermColors.of("cmd")
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 6) {
+                Text(">_").font(mono(11, .bold)).foregroundColor(c.hi)
+                Text("todo.exe").font(mono(11)).foregroundColor(c.hi)
+                Spacer(minLength: 4)
+                Text(shortDate(date)).font(mono(10)).foregroundColor(c.dim).lineLimit(1)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 26)
+            .background(c.bar)
+
+            VStack(alignment: .leading, spacing: 4) {
+                (Text("C:\\todo> ").foregroundColor(c.dim) + Text("widget").foregroundColor(c.cmd))
+                    .font(mono(11))
+                Text("Access is denied.").font(mono(12, .bold)).foregroundColor(c.warn)
+                Text("위젯은 PRO 기능이에요.").font(mono(11)).foregroundColor(c.fg)
+                Spacer(minLength: 0)
+                (Text("앱에서 ").foregroundColor(c.dim) + Text("upgrade").foregroundColor(c.cmd) + Text(" 입력_").foregroundColor(c.dim))
+                    .font(mono(11))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+            .padding(.bottom, 10)
+        }
+    }
+}
+
+struct LockedAccessoryView: View {
+    let family: WidgetFamily
+
+    var body: some View {
+        switch family {
+        case .accessoryCircular:
+            ZStack {
+                AccessoryWidgetBackground()
+                VStack(spacing: 0) {
+                    Text(">_").font(mono(11, .bold))
+                    Text("PRO").font(mono(12, .bold))
+                }
+            }
+            .widgetAccentable()
+        case .accessoryInline:
+            Text(">_ todo.exe · PRO 필요")
+        default:
+            VStack(alignment: .leading, spacing: 1) {
+                Text("C:\\todo> widget").font(mono(12, .bold)).widgetAccentable()
+                Text("Access is denied.").font(mono(12))
+                Text("앱에서 upgrade").font(mono(12))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
 // MARK: - 위젯 정의
 
 struct TodoWidgetView: View {
@@ -292,6 +359,26 @@ struct TodoWidgetView: View {
     let entry: TodoEntry
 
     var body: some View {
+        if entry.snap.isPro {
+            unlocked
+        } else {
+            locked
+        }
+    }
+
+    @ViewBuilder
+    private var locked: some View {
+        switch family {
+        case .accessoryRectangular, .accessoryCircular, .accessoryInline:
+            LockedAccessoryView(family: family).containerBackground(for: .widget) { Color.clear }
+        default:
+            LockedHomeView(date: entry.date, family: family)
+                .containerBackground(for: .widget) { TermColors.of("cmd").bg }
+        }
+    }
+
+    @ViewBuilder
+    private var unlocked: some View {
         switch family {
         case .accessoryRectangular:
             LockRectView(snap: entry.snap).containerBackground(for: .widget) { Color.clear }
@@ -348,4 +435,10 @@ struct TodoWidget: Widget {
     TodoWidget()
 } timeline: {
     TodoEntry(date: .now, snap: .sample)
+}
+
+#Preview("PRO 아님", as: .systemSmall) {
+    TodoWidget()
+} timeline: {
+    TodoEntry(date: .now, snap: .empty)
 }

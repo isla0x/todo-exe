@@ -4,12 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../logic/commands.dart';
+import '../pro/pro_controller.dart';
 import '../theme/term_palette.dart';
 
 /// 앱 상태. 명령어를 실행하고 기기에 저장한다.
 class TodoStore extends ChangeNotifier {
-  TodoStore({DateTime Function()? clock}) : _clock = clock ?? DateTime.now {
+  TodoStore({DateTime Function()? clock, this.pro}) : _clock = clock ?? DateTime.now {
     _data = TodoData.initial(_clock());
+    pro?.addListener(notifyListeners);
   }
 
   static const _key = 'todo_exe_state_v1';
@@ -17,6 +19,10 @@ class TodoStore extends ChangeNotifier {
   static const _maxHistory = 50;
 
   final DateTime Function() _clock;
+
+  /// PRO 결제 상태. 없으면 무료로 취급한다.
+  final ProController? pro;
+
   late TodoData _data;
   SharedPreferences? _prefs;
 
@@ -28,7 +34,11 @@ class TodoStore extends ChangeNotifier {
   TodoData get data => _data;
   List<LogLine> get log => List.unmodifiable(_log);
   List<String> get history => List.unmodifiable(_history);
-  TermPalette get palette => TermPalette.of(_data.theme);
+  bool get isPro => pro?.isPro ?? false;
+
+  /// PRO 가 아니면 저장된 테마와 관계없이 cmd 로 보인다.
+  TermPalette get palette => TermPalette.of(isPro ? _data.theme : freeTheme);
+  bool get crtOn => isPro && _data.crt;
   DateTime now() => _clock();
 
   Future<void> load() async {
@@ -50,20 +60,41 @@ class TodoStore extends ChangeNotifier {
     _history.add(s);
     if (_history.length > _maxHistory) _history.removeAt(0);
 
-    final out = runCommand(_data, s, _clock());
+    // 디버그 빌드 전용: 결제 없이 PRO 켜고 끄기.
+    if (kDebugMode && pro != null && s.toLowerCase() == 'pro --dev') {
+      pro!.debugToggle();
+      _appendLog([
+        LogLine(LogKind.cmd, 'C:\\todo> $s'),
+        LogLine(LogKind.info, '[dev] PRO ${pro!.isPro ? 'on' : 'off'}'),
+      ]);
+      notifyListeners();
+      return null;
+    }
+
+    final out = runCommand(_data, s, _clock(), pro: isPro);
     _data = out.data;
     if (out.clearLog) {
       _log.clear();
     } else {
-      _log.addAll(out.lines);
-      if (_log.length > _maxLog) _log.removeRange(0, _log.length - _maxLog);
+      _appendLog(out.lines);
     }
     notifyListeners();
     _save();
     return out.route;
   }
 
+  void _appendLog(List<LogLine> lines) {
+    _log.addAll(lines);
+    if (_log.length > _maxLog) _log.removeRange(0, _log.length - _maxLog);
+  }
+
   void _save() {
     _prefs?.setString(_key, jsonEncode(_data.toJson()));
+  }
+
+  @override
+  void dispose() {
+    pro?.removeListener(notifyListeners);
+    super.dispose();
   }
 }

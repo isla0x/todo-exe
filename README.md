@@ -56,6 +56,22 @@ flutter test         # 테스트
 
 생성된 `android/`, `ios/` 폴더는 커밋해 두면 앱 아이콘·이름을 바꿀 때 편해요.
 
+## PRO (한 번 결제)
+
+| 무료 | PRO |
+|---|---|
+| 할 일 전체 기능, stats, cmd 테마 | phosphor · amber 테마, CRT 효과, 홈 화면 · 잠금화면 위젯 |
+
+- 상품 ID: `todo_exe_pro` (비소모성 / Non-Consumable)
+- 명령어: `upgrade`(구매 화면), `restore`(구매 복원). 제목줄 `PRO` 링크로도 열 수 있어요.
+- PRO 가 아니면 위젯은 `Access is denied.` 잠금 화면을 보여줘요.
+- 디버그 빌드에서만 `pro --dev` 로 결제 없이 PRO 를 켜고 끌 수 있어요 (출시 빌드에서는 동작 안 함).
+
+### 스토어에 상품 등록
+- **App Store Connect** → 앱 → 수익화 → 앱 내 구입 → `+` → **비소모성**, 제품 ID `todo_exe_pro`, 가격, 한국어 표시 이름/설명, 심사용 스크린샷(PRO 화면)
+- 첫 인앱 구입은 **앱 버전과 함께 심사 제출**해야 해요.
+- 테스트: TestFlight 또는 Xcode 의 StoreKit Configuration 파일 (Sandbox 계정으로 실제 결제 없이 테스트)
+
 ## iOS 위젯 (홈 화면 · 잠금화면)
 
 | 위치 | 크기 | 내용 |

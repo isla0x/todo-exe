@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'pro/pro_controller.dart';
 import 'screens/boot_screen.dart';
 import 'state/todo_store.dart';
 import 'theme/term_palette.dart';
@@ -10,13 +11,16 @@ import 'widgets/term_widgets.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  final store = TodoStore();
+  final pro = ProController();
+  await pro.init();
+  final store = TodoStore(pro: pro);
   await store.load();
 
-  // 위젯은 할 일이 바뀔 때마다 새로 그린다.
+  // 위젯은 할 일이나 PRO 상태가 바뀔 때마다 새로 그린다. (store 는 pro 변화도 알려준다)
   await WidgetSync.init();
-  WidgetSync.push(store.data, store.now());
-  store.addListener(() => WidgetSync.push(store.data, store.now()));
+  void pushWidget() => WidgetSync.push(store.data, store.now(), pro: store.isPro);
+  pushWidget();
+  store.addListener(pushWidget);
 
   runApp(TodoExeApp(store: store));
 }
@@ -45,7 +49,7 @@ class TodoExeApp extends StatelessWidget {
             child: Stack(
               children: [
                 child ?? const SizedBox.shrink(),
-                if (store.data.crt)
+                if (store.crtOn)
                   const Positioned.fill(
                     child: IgnorePointer(child: CustomPaint(painter: ScanlinePainter())),
                   ),

@@ -167,9 +167,16 @@ class CommandOutcome {
   final String? route;
 }
 
-const knownCommands = {'add', 'done', 'undo', 'edit', 'rm', 'ls', 'clear', 'help', 'stats', 'theme', 'crt'};
+const knownCommands = {
+  'add', 'done', 'undo', 'edit', 'rm', 'ls', 'clear', 'help', 'stats', 'theme', 'crt', //
+  'upgrade', 'pro', 'restore',
+};
 
-CommandOutcome runCommand(TodoData d, String raw, DateTime now) {
+/// 무료로 쓸 수 있는 테마.
+const freeTheme = 'cmd';
+
+/// [pro] 가 false 면 cmd 외 테마와 crt 는 잠겨 있다.
+CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = false}) {
   final s = raw.trim();
   if (s.isEmpty) return CommandOutcome(d, const []);
 
@@ -192,6 +199,11 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now) {
 
   var data = d;
   String? route;
+
+  void denied(String what) {
+    err('Access is denied.');
+    info("$what 은(는) PRO 기능이에요. 'upgrade' 로 열 수 있어요.");
+  }
 
   int findIndex(String a) {
     final id = _parseId(a);
@@ -297,24 +309,37 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now) {
 
     case 'help':
       info('add · done · undo · edit · rm · ls');
-      info('clear · cls · stats · theme · crt');
+      info('clear · cls · stats · theme · crt · upgrade');
       info('자세한 설명은 상단 help');
 
     case 'stats':
       route = 'stats';
 
+    case 'upgrade' || 'pro':
+      route = 'pro';
+
+    case 'restore':
+      route = 'restore';
+
     case 'theme':
       final a = arg.toLowerCase();
       if (a.isEmpty) {
-        info('현재 테마: ${d.theme}  (${themeIds.join(' | ')})');
-      } else if (themeIds.contains(a)) {
+        info('현재 테마: ${pro ? d.theme : freeTheme}  (${themeIds.join(' | ')})');
+        if (!pro) info("phosphor · amber 는 PRO 테마예요. 'upgrade'");
+      } else if (!themeIds.contains(a)) {
+        err("theme: '$arg' 는 없는 테마예요. (${themeIds.join(' | ')})");
+      } else if (a != freeTheme && !pro) {
+        denied('$a 테마');
+      } else {
         data = d.copyWith(theme: a);
         ok('테마 변경: $a');
-      } else {
-        err("theme: '$arg' 는 없는 테마예요. (${themeIds.join(' | ')})");
       }
 
     case 'crt':
+      if (!pro) {
+        denied('crt 효과');
+        break;
+      }
       final a = arg.toLowerCase();
       final bool? next = switch (a) {
         '' => !d.crt,

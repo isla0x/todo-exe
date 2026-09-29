@@ -7,7 +7,7 @@ void main() {
 
   TodoData empty() => const TodoData(tasks: [], completions: [], nextId: 1);
 
-  TodoData run(TodoData d, String cmd) => runCommand(d, cmd, now).data;
+  TodoData run(TodoData d, String cmd, {bool pro = false}) => runCommand(d, cmd, now, pro: pro).data;
 
   group('parseTaskInput', () {
     test('태그와 우선순위를 분리한다', () {
@@ -107,15 +107,34 @@ void main() {
       expect(out.data.tasks, hasLength(1));
     });
 
-    test('theme 와 crt', () {
-      var d = run(empty(), 'theme amber');
+    test('PRO 면 theme 와 crt 를 바꿀 수 있다', () {
+      var d = run(empty(), 'theme amber', pro: true);
       expect(d.theme, 'amber');
-      d = run(d, 'theme nope');
+      d = run(d, 'theme nope', pro: true);
       expect(d.theme, 'amber');
-      d = run(d, 'crt on');
+      d = run(d, 'crt on', pro: true);
       expect(d.crt, isTrue);
-      d = run(d, 'crt');
+      d = run(d, 'crt', pro: true);
       expect(d.crt, isFalse);
+    });
+
+    test('무료면 cmd 외 테마와 crt 는 Access is denied', () {
+      final out = runCommand(empty(), 'theme amber', now);
+      expect(out.data.theme, 'cmd');
+      expect(out.lines.map((l) => l.text), contains('Access is denied.'));
+      expect(out.lines.any((l) => l.kind == LogKind.err), isTrue);
+
+      expect(run(empty(), 'theme cmd').theme, 'cmd');
+
+      final crt = runCommand(empty(), 'crt on', now);
+      expect(crt.data.crt, isFalse);
+      expect(crt.lines.map((l) => l.text), contains('Access is denied.'));
+    });
+
+    test('upgrade / pro / restore 는 PRO 화면을 연다', () {
+      expect(runCommand(empty(), 'upgrade', now).route, 'pro');
+      expect(runCommand(empty(), 'pro', now).route, 'pro');
+      expect(runCommand(empty(), 'restore', now).route, 'restore');
     });
 
     test('stats 는 화면 이동을 요청한다', () {
@@ -126,7 +145,7 @@ void main() {
   test('JSON 저장/복원', () {
     var d = run(empty(), 'add 보고서 #work !!');
     d = run(d, 'done 1');
-    d = run(d, 'theme phosphor');
+    d = run(d, 'theme phosphor', pro: true);
     final back = TodoData.fromJson(d.toJson());
     expect(back.tasks.single.text, '보고서');
     expect(back.tasks.single.done, isTrue);
