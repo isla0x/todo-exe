@@ -12,4 +12,5 @@ fi
 
 cp ios_widget/TodoWidget.swift "$DEST/TodoWidget.swift"
 cp ios_widget/TodoWidgetBundle.swift "$DEST/TodoWidgetBundle.swift"
+cp ios_widget/PrivacyInfo.xcprivacy "$DEST/PrivacyInfo.xcprivacy"
 echo "위젯 코드를 $DEST 에 복사했어요."
