@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'screens/boot_screen.dart';
 import 'state/todo_store.dart';
 import 'theme/term_palette.dart';
+import 'widget_sync.dart';
 import 'widgets/term_widgets.dart';
 
 Future<void> main() async {
@@ -11,6 +12,12 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   final store = TodoStore();
   await store.load();
+
+  // 위젯은 할 일이 바뀔 때마다 새로 그린다.
+  await WidgetSync.init();
+  WidgetSync.push(store.data, store.now());
+  store.addListener(() => WidgetSync.push(store.data, store.now()));
+
   runApp(TodoExeApp(store: store));
 }
 
