@@ -56,6 +56,38 @@ flutter test         # 테스트
 
 생성된 `android/`, `ios/` 폴더는 커밋해 두면 앱 아이콘·이름을 바꿀 때 편해요.
 
+## iOS 위젯 (홈 화면 · 잠금화면)
+
+| 위치 | 크기 | 내용 |
+|---|---|---|
+| 홈 화면 | 작게 / 중간 / 크게 | `C:\todo> ls --todo` + 남은 할 일(우선순위 순) + 진행 막대, 연속 달성일 |
+| 잠금화면 | 직사각형 | `C:\todo> 3/7` + 할 일 2개 |
+| 잠금화면 | 원형 | 남은 개수 + 진행 링 |
+| 잠금화면 | 시계 위 한 줄 | `>_ 남은 할 일 4 · 연속 12일` |
+
+앱에서 할 일이 바뀌면 위젯도 바로 바뀌어요. 색은 `theme` 설정을 따라가요(잠금화면은 iOS가 단색으로 그려요).
+
+### 처음 한 번 설정 (Xcode, iOS 17 이상)
+
+1. `open ios/Runner.xcworkspace`
+2. **File → New → Target… → Widget Extension**
+   - Product Name: `TodoWidget`
+   - Include Live Activity / Control / Configuration App Intent: **모두 체크 해제**
+   - Finish → "Activate scheme?" 은 **Cancel** (Runner 로 계속 실행)
+3. 왼쪽에서 **TodoWidget** 타깃 → General → **Minimum Deployments 를 17.0** 으로
+4. **Runner** 타깃 → Signing & Capabilities → **+ Capability → App Groups** → `+` → `group.com.isla0x.todoexe`
+5. **TodoWidget** 타깃도 4번과 똑같이 (같은 그룹 체크). Team 도 Runner 와 같게.
+6. 터미널에서 `bash tool/install_ios_widget.sh` (위젯 코드 덮어쓰기)
+7. Runner 선택 후 ▶︎ 실행 → 홈 화면 길게 누르기 → `+` → **todo.exe** 추가
+   잠금화면은 잠금화면 길게 누르기 → 사용자화 → 잠금 화면 → 위젯 추가
+
+설정한 `ios/` 폴더는 커밋해 두세요: `git add ios && git commit -m "iOS 위젯 타깃" && git push`
+
+**막힐 때**
+- `Cycle inside Runner` 빌드 오류: Runner 타깃 → Build Phases 에서 **Embed Foundation Extensions** 를 **Run Script / Thin Binary 위로** 끌어올리기
+- 위젯에 "할 일이 없어요"만 나옴: 두 타깃의 App Group 이름이 정확히 같은지 확인하고 앱을 한 번 열기
+- 무료 Apple ID 에서 App Groups 추가가 안 되면 알려주세요
+
 ## 구조
 
 ```
@@ -68,7 +100,9 @@ lib/
   theme/term_palette.dart   cmd / phosphor / amber 색
   widgets/term_widgets.dart 제목줄, 버튼, 아이콘
   screens/                  boot, home, help, stats
-test/                       명령어·통계·화면 테스트
+  widget_sync.dart          iOS 위젯으로 데이터 전달
+ios_widget/                 iOS 위젯 SwiftUI 코드 (tool/install_ios_widget.sh 로 복사)
+test/                       명령어·통계·화면·위젯 데이터 테스트
 ```
 
 ## 폰트
