@@ -131,6 +131,15 @@ void main() {
       expect(crt.lines.map((l) => l.text), contains('Access is denied.'));
     });
 
+    test('mode 는 무료로 바꿀 수 있고 저장된다', () {
+      var d = run(empty(), 'mode light');
+      expect(d.mode, 'light');
+      d = run(d, 'mode nope');
+      expect(d.mode, 'light');
+      expect(TodoData.fromJson(run(d, 'mode dark').toJson()).mode, 'dark');
+      expect(const TodoData(tasks: [], completions: [], nextId: 1).mode, 'auto');
+    });
+
     test('upgrade / pro / restore 는 PRO 화면을 연다', () {
       expect(runCommand(empty(), 'upgrade', now).route, 'pro');
       expect(runCommand(empty(), 'pro', now).route, 'pro');

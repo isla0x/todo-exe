@@ -47,6 +47,9 @@ class TaskFilter {
 
 const themeIds = ['cmd', 'phosphor', 'amber'];
 
+/// 밝기 모드. auto = 폰 설정을 따른다. (cmd 테마에만 적용, 무료)
+const modeIds = ['auto', 'light', 'dark'];
+
 class TodoData {
   const TodoData({
     required this.tasks,
@@ -55,6 +58,7 @@ class TodoData {
     this.filter = TaskFilter.all,
     this.theme = 'cmd',
     this.crt = false,
+    this.mode = 'auto',
   });
 
   final List<Task> tasks;
@@ -63,6 +67,7 @@ class TodoData {
   final TaskFilter filter;
   final String theme;
   final bool crt;
+  final String mode;
 
   int get doneCount => tasks.where((t) => t.done).length;
 
@@ -73,6 +78,7 @@ class TodoData {
     TaskFilter? filter,
     String? theme,
     bool? crt,
+    String? mode,
   }) =>
       TodoData(
         tasks: tasks ?? this.tasks,
@@ -81,6 +87,7 @@ class TodoData {
         filter: filter ?? this.filter,
         theme: theme ?? this.theme,
         crt: crt ?? this.crt,
+        mode: mode ?? this.mode,
       );
 
   /// 처음 실행했을 때 보여줄 튜토리얼 목록.
@@ -107,10 +114,12 @@ class TodoData {
         'nextId': nextId,
         'theme': theme,
         'crt': crt,
+        'mode': mode,
       };
 
   factory TodoData.fromJson(Map<String, dynamic> json) {
     final theme = (json['theme'] as String?) ?? 'cmd';
+    final mode = (json['mode'] as String?) ?? 'auto';
     return TodoData(
       tasks: [
         for (final t in (json['tasks'] as List? ?? const [])) Task.fromJson(Map<String, dynamic>.from(t as Map)),
@@ -122,6 +131,7 @@ class TodoData {
       nextId: (json['nextId'] as int?) ?? 1,
       theme: themeIds.contains(theme) ? theme : 'cmd',
       crt: (json['crt'] as bool?) ?? false,
+      mode: modeIds.contains(mode) ? mode : 'auto',
     );
   }
 }
@@ -169,7 +179,7 @@ class CommandOutcome {
 
 const knownCommands = {
   'add', 'done', 'undo', 'edit', 'rm', 'ls', 'clear', 'help', 'stats', 'theme', 'crt', //
-  'upgrade', 'pro', 'restore',
+  'upgrade', 'pro', 'restore', 'mode',
 };
 
 /// 무료로 쓸 수 있는 테마.
@@ -309,7 +319,7 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
 
     case 'help':
       info('add · done · undo · edit · rm · ls');
-      info('clear · cls · stats · theme · crt · upgrade');
+      info('clear · cls · stats · theme · mode · crt · upgrade');
       info('자세한 설명은 상단 help');
 
     case 'stats':
@@ -320,6 +330,18 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
 
     case 'restore':
       route = 'restore';
+
+    case 'mode':
+      final a = arg.toLowerCase();
+      if (a.isEmpty) {
+        info('현재 모드: ${d.mode}  (${modeIds.join(' | ')})');
+      } else if (!modeIds.contains(a)) {
+        err("mode: '$arg' 는 없는 모드예요. (${modeIds.join(' | ')})");
+      } else {
+        data = d.copyWith(mode: a);
+        ok('모드 변경: $a');
+        if (pro && d.theme != freeTheme) info('밝은 모드는 cmd 테마에서만 보여요.');
+      }
 
     case 'theme':
       final a = arg.toLowerCase();

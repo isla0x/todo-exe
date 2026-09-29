@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Brightness;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../logic/commands.dart';
@@ -36,8 +37,27 @@ class TodoStore extends ChangeNotifier {
   List<String> get history => List.unmodifiable(_history);
   bool get isPro => pro?.isPro ?? false;
 
-  /// PRO 가 아니면 저장된 테마와 관계없이 cmd 로 보인다.
-  TermPalette get palette => TermPalette.of(isPro ? _data.theme : freeTheme);
+  /// 폰의 다크/라이트 설정. 앱이 바뀔 때마다 알려준다.
+  Brightness _systemBrightness = Brightness.dark;
+  Brightness get systemBrightness => _systemBrightness;
+  set systemBrightness(Brightness value) {
+    if (value == _systemBrightness) return;
+    _systemBrightness = value;
+    notifyListeners();
+  }
+
+  /// 지금 밝은 모드로 보여야 하는지 (mode + 폰 설정).
+  bool get lightMode => switch (_data.mode) {
+        'light' => true,
+        'dark' => false,
+        _ => _systemBrightness == Brightness.light,
+      };
+
+  /// 실제로 쓰는 테마 이름. PRO 가 아니면 저장된 테마와 관계없이 cmd.
+  String get themeId => isPro ? _data.theme : freeTheme;
+
+  /// 밝은 모드는 cmd 테마에만 적용된다.
+  TermPalette get palette => TermPalette.of(themeId, light: lightMode);
   bool get crtOn => isPro && _data.crt;
   DateTime now() => _clock();
 

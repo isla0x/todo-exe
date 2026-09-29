@@ -51,6 +51,8 @@ Map<String, dynamic> widgetSnapshot(TodoData d, DateTime now, {bool pro = false,
     'v': 2,
     'pro': pro,
     'theme': pro ? d.theme : freeTheme,
+    // 위젯은 auto 일 때 iOS 의 다크/라이트 설정을 직접 따른다.
+    'mode': d.mode,
     'done': d.doneCount,
     'total': d.tasks.length,
     'streak': Stats.compute(d, now).streak,

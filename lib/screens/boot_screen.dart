@@ -74,7 +74,7 @@ class _BootScreenState extends State<BootScreen> {
       ('할 일 불러오기', '${d.tasks.length}건'),
       ('날짜 확인', date),
       ('명령어 해석기', 'v1.0'),
-      ('테마 적용', p.id),
+      ('테마 적용', p.isLight ? '${p.id} · light' : p.id),
     ];
     final cells = (_step * 20 / _steps).round();
     final pct = (_step * 100 / _steps).round();

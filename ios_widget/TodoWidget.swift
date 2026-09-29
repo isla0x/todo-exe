@@ -30,6 +30,8 @@ struct TodoSnapshot: Decodable {
     /// PRO 결제 여부. 예전 버전 데이터에는 없을 수 있다.
     let pro: Bool?
     let theme: String
+    /// auto | light | dark (cmd 테마에만 적용). 예전 데이터에는 없을 수 있다.
+    let mode: String?
     let done: Int
     let total: Int
     let streak: Int
@@ -38,10 +40,24 @@ struct TodoSnapshot: Decodable {
     var left: Int { max(0, total - done) }
     var isPro: Bool { pro ?? false }
 
-    static let empty = TodoSnapshot(pro: false, theme: "cmd", done: 0, total: 0, streak: 0, todo: [])
+    /// 앱의 mode 설정과 iOS 다크/라이트 설정으로 밝은 모드인지 정한다.
+    func isLight(_ scheme: ColorScheme) -> Bool {
+        switch mode ?? "auto" {
+        case "light": return true
+        case "dark": return false
+        default: return scheme == .light
+        }
+    }
+
+    /// 이 스냅샷이 실제로 쓸 색. 밝은 모드는 cmd 테마에만 적용된다.
+    func colors(_ scheme: ColorScheme) -> TermColors {
+        TermColors.of(isPro ? theme : "cmd", light: isLight(scheme))
+    }
+
+    static let empty = TodoSnapshot(pro: false, theme: "cmd", mode: "auto", done: 0, total: 0, streak: 0, todo: [])
 
     static let sample = TodoSnapshot(
-        pro: true, theme: "cmd", done: 3, total: 7, streak: 12,
+        pro: true, theme: "cmd", mode: "auto", done: 3, total: 7, streak: 12,
         todo: [
             TodoItem(n: "#01", t: "주간 보고서 초안 작성", p: 2, g: "work"),
             TodoItem(n: "#03", t: "앱 온보딩 와이어프레임", p: 1, g: "side"),
@@ -66,7 +82,7 @@ struct TodoSnapshot: Decodable {
 struct TermColors {
     let bg, bar, fg, hi, dim, ok, tag, cmd, warn, line: Color
 
-    static func of(_ id: String) -> TermColors {
+    static func of(_ id: String, light: Bool = false) -> TermColors {
         switch id {
         case "phosphor":
             return TermColors(bg: Color(hex: 0x050A06), bar: Color(hex: 0x0B170E), fg: Color(hex: 0x4AF626),
@@ -79,6 +95,13 @@ struct TermColors {
                               tag: Color(hex: 0xFFD166), cmd: Color(hex: 0xFFCF70), warn: Color(hex: 0xFF6B3D),
                               line: Color(hex: 0x3A2A0A))
         default:
+            if light {
+                // 종이에 출력한 터미널 (앱의 cmdLight 와 같은 색)
+                return TermColors(bg: Color(hex: 0xF5F2E8), bar: Color(hex: 0xE8E4D6), fg: Color(hex: 0x2B2B2B),
+                                  hi: Color(hex: 0x111111), dim: Color(hex: 0x6B6B6B), ok: Color(hex: 0x0B7A0B),
+                                  tag: Color(hex: 0x7A5F00), cmd: Color(hex: 0x0B6E8A), warn: Color(hex: 0xC0282F),
+                                  line: Color(hex: 0xD6D1C2))
+            }
             return TermColors(bg: Color(hex: 0x0C0C0C), bar: Color(hex: 0x1A1A1A), fg: Color(hex: 0xCCCCCC),
                               hi: Color(hex: 0xF2F2F2), dim: Color(hex: 0x8A8A8A), ok: Color(hex: 0x16C60C),
                               tag: Color(hex: 0xF9F1A5), cmd: Color(hex: 0x61D6D6), warn: Color(hex: 0xE74856),
@@ -152,7 +175,7 @@ struct HomeWidgetView: View {
     let entry: TodoEntry
     let family: WidgetFamily
 
-    private var c: TermColors { .of(entry.snap.theme) }
+    let c: TermColors
     private var small: Bool { family == .systemSmall }
     private var maxRows: Int { family == .systemLarge ? 9 : 3 }
 
@@ -294,7 +317,7 @@ struct LockInlineView: View {
 struct LockedHomeView: View {
     let date: Date
     let family: WidgetFamily
-    private let c = TermColors.of("cmd")
+    let c: TermColors
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -356,7 +379,10 @@ struct LockedAccessoryView: View {
 
 struct TodoWidgetView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var scheme
     let entry: TodoEntry
+
+    private var colors: TermColors { entry.snap.colors(scheme) }
 
     var body: some View {
         if entry.snap.isPro {
@@ -372,8 +398,8 @@ struct TodoWidgetView: View {
         case .accessoryRectangular, .accessoryCircular, .accessoryInline:
             LockedAccessoryView(family: family).containerBackground(for: .widget) { Color.clear }
         default:
-            LockedHomeView(date: entry.date, family: family)
-                .containerBackground(for: .widget) { TermColors.of("cmd").bg }
+            LockedHomeView(date: entry.date, family: family, c: colors)
+                .containerBackground(for: .widget) { colors.bg }
         }
     }
 
@@ -387,8 +413,8 @@ struct TodoWidgetView: View {
         case .accessoryInline:
             LockInlineView(snap: entry.snap).containerBackground(for: .widget) { Color.clear }
         default:
-            HomeWidgetView(entry: entry, family: family)
-                .containerBackground(for: .widget) { TermColors.of(entry.snap.theme).bg }
+            HomeWidgetView(entry: entry, family: family, c: colors)
+                .containerBackground(for: .widget) { colors.bg }
         }
     }
 }

@@ -287,6 +287,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           focusNode: _focus,
                           style: termStyle(p.hi, size: 16, height: 1.2),
                           cursorColor: p.ok,
+                          keyboardAppearance: p.isLight ? Brightness.light : Brightness.dark,
                           cursorWidth: 9,
                           cursorHeight: 18,
                           autocorrect: false,

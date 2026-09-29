@@ -14,9 +14,13 @@ class TermPalette {
     required this.cmd,
     required this.warn,
     required this.line,
+    this.isLight = false,
   });
 
   final String id;
+
+  /// 밝은 바탕 팔레트인지 (상태바 아이콘, 키보드 색 등에 쓴다).
+  final bool isLight;
 
   /// 배경
   final Color bg;
@@ -62,6 +66,22 @@ class TermPalette {
     line: Color(0xFF2A2A2A),
   );
 
+  /// cmd 의 라이트 모드: 종이에 출력한 터미널. 무료.
+  static const cmdLight = TermPalette(
+    id: 'cmd',
+    isLight: true,
+    bg: Color(0xFFF5F2E8),
+    bar: Color(0xFFE8E4D6),
+    fg: Color(0xFF2B2B2B),
+    hi: Color(0xFF111111),
+    dim: Color(0xFF6B6B6B),
+    ok: Color(0xFF0B7A0B),
+    tag: Color(0xFF7A5F00),
+    cmd: Color(0xFF0B6E8A),
+    warn: Color(0xFFC0282F),
+    line: Color(0xFFD6D1C2),
+  );
+
   static const phosphor = TermPalette(
     id: 'phosphor',
     bg: Color(0xFF050A06),
@@ -90,10 +110,11 @@ class TermPalette {
     line: Color(0xFF3A2A0A),
   );
 
-  static TermPalette of(String id) => switch (id) {
+  /// [light] 는 cmd 에만 적용된다. phosphor · amber 는 CRT 모니터라 항상 어둡다.
+  static TermPalette of(String id, {bool light = false}) => switch (id) {
         'phosphor' => phosphor,
         'amber' => amber,
-        _ => cmdTheme,
+        _ => light ? cmdLight : cmdTheme,
       };
 }
 
