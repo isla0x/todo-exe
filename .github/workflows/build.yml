@@ -32,6 +32,9 @@ jobs:
       - name: Get packages
         run: flutter pub get
 
+      - name: App icons
+        run: dart run flutter_launcher_icons
+
       - name: Test
         run: flutter test --reporter github
 
