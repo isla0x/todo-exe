@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: JBM; src: url(fonts/JetBrainsMono-Regular.ttf); font-weight: 400; }
+@font-face { font-family: JBM; src: url(fonts/JetBrainsMono-Bold.ttf); font-weight: 700; }
+@font-face { font-family: NGC; src: url(fonts/NanumGothicCoding-Regular.ttf); font-weight: 400; }
+@font-face { font-family: NGC; src: url(fonts/NanumGothicCoding-Bold.ttf); font-weight: 700; }
+@font-face { font-family: NSK; src: url(fonts/NotoSansKR.ttf); font-weight: 100 900; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #0C0C0C; overflow: hidden; }
+.mono { font-family: JBM, NGC, monospace; }
+.canvas { position: relative; overflow: hidden; background: radial-gradient(120% 70% at 50% 0%, #1b1f1b 0%, #0C0C0C 60%); }
+.cap { position: absolute; left: 0; right: 0; text-align: center; color: #F2F2F2; font-family: JBM, NGC, monospace; }
+.cap .p { color: #8A8A8A; }
+.cap .p b { color: #16C60C; font-weight: 400; }
+.cap .t { font-weight: 700; letter-spacing: -0.5px; }
+.cap .s { color: #9A9A9A; }
+.frame { position: absolute; background: #1b1b1b; border: 1px solid #3a3a3a; box-shadow: 0 30px 80px rgba(0,0,0,.6), inset 0 0 0 2px #0a0a0a; }
+.screen { position: absolute; overflow: hidden; background: #000; }
+.app { position: absolute; left: 0; top: 0; transform-origin: top left; font-family: JBM, NGC, monospace; line-height: 1.5; display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; }
+.dash { height: 1px; background-image: linear-gradient(90deg, var(--line) 0 4px, transparent 4px 7px); background-size: 7px 1px; }
+.btn { height: 44px; padding: 0 12px; display: inline-flex; align-items: center; border: 1px solid var(--line); font-size: 13px; }
+.ls { position: absolute; inset: 0; font-family: NSK, sans-serif; color: #fff; }
+.chip { display: inline-block; padding: 6px 14px; border: 1px solid; font-size: 14px; margin: 0 5px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const P = {
+  cmd:   { bg:'#0C0C0C', bar:'#1A1A1A', fg:'#CCCCCC', hi:'#F2F2F2', dim:'#8A8A8A', ok:'#16C60C', tag:'#F9F1A5', cmd:'#61D6D6', warn:'#E74856', line:'#2A2A2A' },
+  light: { bg:'#F5F2E8', bar:'#E8E4D6', fg:'#2B2B2B', hi:'#111111', dim:'#6B6B6B', ok:'#0B7A0B', tag:'#7A5F00', cmd:'#0B6E8A', warn:'#C0282F', line:'#D6D1C2' },
+  phosphor: { bg:'#050A06', bar:'#0B170E', fg:'#4AF626', hi:'#B8FFA8', dim:'#2E9A1A', ok:'#B8FFA8', tag:'#E8FF7A', cmd:'#7CFFCB', warn:'#FF6B5A', line:'#16361D' },
+  amber: { bg:'#0F0A02', bar:'#1C1305', fg:'#FFB000', hi:'#FFE3A3', dim:'#B07A00', ok:'#FFE3A3', tag:'#FFD166', cmd:'#FFCF70', warn:'#FF6B3D', line:'#3A2A0A' },
+};
+const q = new URLSearchParams(location.search);
+const device = q.get('device') || 'iphone';
+const shot = +(q.get('shot') || 1);
+const IP = device === 'iphone';
+const C = IP ? { w:440, h:956, appW:390, appH:844, frameTop:178, screenW:350, bezel:8, rFrame:58, rScreen:50, statusH:47, homeH:34,
+                 capTop:52, pSize:13, tSize:33, sSize:14 }
+             : { w:1032, h:1376, appW:680, appH:907, frameTop:290, screenW:760, bezel:14, rFrame:40, rScreen:26, statusH:24, homeH:20,
+                 capTop:80, pSize:20, tSize:54, sSize:22 };
+C.screenH = Math.round(C.screenW * C.appH / C.appW);
+
+const TASKS = [
+  { n:'#01', t:'주간 보고서 초안 작성', p:2, g:'work', d:false },
+  { n:'#02', t:'운동 30분', p:0, g:'health', d:true },
+  { n:'#03', t:'앱 온보딩 와이어프레임', p:1, g:'side', d:false },
+  { n:'#04', t:'장보기 — 우유, 계란', p:0, g:'life', d:true },
+  { n:'#05', t:'책 20페이지 읽기', p:0, g:'life', d:false },
+  { n:'#06', t:'메일 답장 3건', p:0, g:'work', d:true },
+  { n:'#07', t:'치과 예약하기', p:1, g:'life', d:false },
+];
+if (!IP) TASKS.push(
+  { n:'#08', t:'분기 회고 정리', p:0, g:'work', d:false },
+  { n:'#09', t:'물 2L 마시기', p:0, g:'health', d:true },
+  { n:'#10', t:'사이드 프로젝트 README 쓰기', p:0, g:'side', d:false });
+
+const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const promptIcon = c => `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="${c}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.5 6 8l-3.5 3.5"/><path d="M8 12h5.5"/></svg>`;
+const returnIcon = c => `<svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3v6q0 2-2 2H3.5"/><path d="M7 7.5 3.5 11 7 14.5"/></svg>`;
+
+function statusBar(c, bg) {
+  const batt = `<svg width="${IP?26:24}" height="12" viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3" fill="none" stroke="${c}" opacity=".5"/><rect x="2" y="2" width="16" height="8" rx="1.5" fill="${c}"/><rect x="23.5" y="4" width="1.5" height="4" rx=".7" fill="${c}" opacity=".5"/></svg>`;
+  return `<div class="row" style="height:${C.statusH}px;background:${bg};padding:${IP?'14px 30px 0 36px':'0 20px'};justify-content:space-between;font-family:NSK,sans-serif;font-weight:600;font-size:${IP?16:13}px;color:${c}">
+    <span>9:41</span><span class="row" style="gap:6px">${IP?'':'<span style="font-weight:500">9월 29일 (화)</span>'}${batt}</span></div>`;
+}
+
+function titleBar(p, active, showPro) {
+  const tab = (label, on, color) => `<div class="row" style="height:44px;padding:0 10px;font-size:13px;${on?`background:${p.fg};color:${p.bg}`:`color:${color||p.dim}`}">${label}</div>`;
+  return `<div style="background:${p.bar};border-bottom:1px solid ${p.line}">${statusBar(p.hi, p.bar)}
+    <div class="row" style="height:44px;padding:0 4px 0 14px;gap:8px">${promptIcon(p.hi)}
+      <span style="font-size:13px;color:${p.hi}">todo.exe</span><span style="font-size:12px;color:${p.dim};flex:1">09.29 화</span>
+      ${showPro?tab('PRO',false,p.tag):''}${tab('stats',active==='stats')}${tab('help',active==='help')}</div></div>`;
+}
+
+function mainScreen(p, o) {
+  const tasks = o.tasks || TASKS;
+  const done = tasks.filter(t=>t.d).length, total = tasks.length;
+  const cells = Math.round(done*10/total), pct = Math.round(done*100/total);
+  const rows = tasks.map(t => `<div class="row" style="border-bottom:1px solid ${p.line};min-height:48px">
+      <div class="row" style="flex:1;min-width:0;gap:10px;padding:6px 0;font-size:14px">
+        <span style="color:${t.d?p.ok:p.fg}">${t.d?'[x]':'[ ]'}</span>
+        <span style="color:${p.dim};font-size:12px">${t.n}</span>
+        <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:${t.d?p.dim:p.hi};${t.d?`text-decoration:line-through;text-decoration-color:${p.dim}`:''}">${esc(t.t)}</span>
+        ${t.p?`<span style="color:${p.warn};font-weight:700">${'!'.repeat(t.p)}</span>`:''}
+        ${t.g?`<span style="color:${p.tag};font-size:12px">#${t.g}</span>`:''}
+      </div><div class="row" style="width:44px;justify-content:center;color:${p.dim};font-size:12px">rm</div></div>`).join('');
+  const f = (label, on) => `<span class="btn" style="margin-right:8px;${on?`background:${p.fg};color:${p.bg};border-color:${p.fg}`:`color:${p.fg}`}">${label}</span>`;
+  const colors = { cmd:p.fg, ok:p.ok, err:p.warn, info:p.dim };
+  const log = (o.log||[]).map(([k,s]) => `<div style="font-size:13px;color:${colors[k]}">${esc(s)}</div>`).join('');
+  const chips = ['add','done','edit','rm','clear','cls','help'].map(c=>`<span class="btn" style="margin-right:6px;color:${p.cmd};flex:none">${c}</span>`).join('');
+  const input = o.input ? `<span style="color:${p.hi};font-size:16px;white-space:nowrap">${esc(o.input)}</span><span style="display:inline-block;width:9px;height:18px;background:${p.ok};margin-left:1px"></span>`
+                        : `<span style="color:${p.dim};font-size:16px">add 할 일 #태그 !</span>`;
+  return `<div class="app" style="width:${C.appW}px;height:${C.appH}px;background:${p.bg};color:${p.fg}">
+    ${titleBar(p, null, o.showPro)}
+    <div style="flex:1;min-height:0;display:flex;flex-direction:column;padding:14px 16px 0">
+      <div style="color:${p.hi};font-size:14px">TODO [Version 1.0.0]</div>
+      <div style="color:${p.dim};font-size:13px">(c) 채은. 오늘도 하나씩, 천천히.</div>
+      <div style="margin-top:12px;font-size:14px"><span style="color:${p.dim}">C:\\todo&gt; </span><span style="color:${p.cmd}">ls</span></div>
+      <div class="row" style="margin-top:8px">${f('--all '+total,true)}${f('--todo '+(total-done))}${f('--done '+done)}</div>
+      <div class="row" style="margin-top:14px;gap:10px;font-size:13px"><span style="color:${p.dim}">진행</span><span style="color:${p.ok}">[${'█'.repeat(cells)}${'░'.repeat(10-cells)}]</span><span style="color:${p.hi}">${done}/${total}</span><span style="color:${p.dim}">${pct}%</span></div>
+      <div class="dash" style="--line:${p.line};margin-top:12px"></div>
+      <div style="flex:1;min-height:0;overflow:hidden">${rows}</div>
+      <div style="min-height:64px;padding:8px 0;display:flex;flex-direction:column;justify-content:flex-end">${log}</div>
+    </div>
+    <div style="background:${p.bar};border-top:1px solid ${p.line};padding:8px 12px ${12+C.homeH}px">
+      <div class="row" style="overflow:hidden">${chips}</div>
+      <div class="row" style="margin-top:8px;height:50px;border:1px solid ${p.line};background:${p.bg};padding:0 2px 0 12px;gap:8px">
+        <span style="color:${p.hi};font-size:14px">C:\\todo&gt;</span><div class="row" style="flex:1">${input}</div>
+        <div class="row" style="width:44px;height:44px;justify-content:center">${returnIcon(p.ok)}</div></div>
+    </div></div>`;
+}
+
+function statsScreen(p) {
+  const days = [['09.23 수',4],['09.24 목',6],['09.25 금',3],['09.26 토',2],['09.27 일',1],['09.28 월',4],['09.29 화',3]];
+  const bar = (v,m,w=10) => { const c = Math.round(v*w/m); return '█'.repeat(c)+'░'.repeat(w-c); };
+  const kv = (k,v,vc,x,xc) => `<div class="row" style="padding:2px 0;font-size:14px"><span style="width:100px;color:${p.dim}">${k}</span><span style="color:${vc||p.hi}">${v}</span>${x?`<span style="margin-left:10px;color:${xc||p.dim}">${x}</span>`:''}</div>`;
+  const brow = (l,lc,b,bc,v,note) => `<div class="row" style="font-size:13px;margin-bottom:3px"><span style="width:80px;color:${lc}">${l}</span><span style="color:${bc}">${b}</span><span style="margin-left:12px">${v}</span>${note?`<span style="margin-left:10px;color:${p.tag}">${note}</span>`:''}</div>`;
+  const H = [['09.07','▒▓░█▒░·'],['09.14','▓▓▒·▒░░'],['09.21','▒▓▓█▒▒░'],['09.28','▓▒     ']];
+  const heat = H.map(([l,g],r) => `<div class="row" style="height:26px;font-size:13px"><span style="width:52px;color:${p.dim}">${l}</span>${[...g].map((ch,c)=>`<span style="flex:1;text-align:center;height:24px;line-height:24px;margin:1px;color:${ch==='·'?p.line:p.ok};${r===3&&c===1?`outline:1px solid ${p.hi};outline-offset:-1px`:''}">${ch===' '?'':ch}</span>`).join('')}</div>`).join('');
+  return `<div class="app" style="width:${C.appW}px;height:${C.appH}px;background:${p.bg};color:${p.fg}">
+    ${titleBar(p,'stats',false)}
+    <div style="flex:1;padding:14px 16px 16px;overflow:hidden">
+      <div style="font-size:14px"><span style="color:${p.dim}">C:\\todo&gt; </span><span style="color:${p.cmd}">stats --week</span></div>
+      <div style="margin-top:12px;padding:12px 14px;border:1px solid ${p.line}">
+        ${kv('현재 목록','3 / 7',null,'43%',p.ok)}${kv('이번 주 완료','23건')}${kv('연속 달성','12일',null,'최고 19일')}${kv('최다 태그','#work',p.tag,'11건')}</div>
+      <div style="margin:20px 0 6px;color:${p.hi};font-size:14px">지난 7일</div>
+      ${days.map(([l,v],i)=>brow(l,i===6?p.hi:p.dim,bar(v,6),p.ok,v,i===6?'◀ 오늘':'')).join('')}
+      ${IP?'':`<div style="margin:20px 0 6px;color:${p.hi};font-size:14px">태그별 완료</div>
+      ${[['work',11],['health',5],['life',4],['side',3]].map(([t,v])=>brow('#'+t,p.tag,bar(v,11),p.cmd,v)).join('')}`}
+      <div style="margin:20px 0 8px;color:${p.hi};font-size:14px">최근 4주</div>
+      <div class="row" style="height:24px;font-size:13px;color:${p.dim}"><span style="width:52px"></span>${'월화수목금토일'.split('').map(d=>`<span style="flex:1;text-align:center">${d}</span>`).join('')}</div>
+      ${heat}
+      <div style="margin-top:8px;font-size:12px;color:${p.dim}">적음 <span style="color:${p.line}">·</span> <span style="color:${p.ok}">░ ▒ ▓ █</span> 많음</div>
+    </div>
+    <div style="padding:8px 16px ${16+C.homeH}px"><div class="row" style="height:52px;border:1px solid ${p.fg};justify-content:center;gap:12px;font-size:15px"><span style="color:${p.dim}">[ ESC ]</span><span style="color:${p.hi}">목록으로</span></div></div>
+  </div>`;
+}
+
+// ---- iOS 위젯 (Swift 코드와 같은 모양) ----
+function homeWidget(p, size) {
+  const small = size==='small';
+  const rows = TASKS.filter(t=>!t.d).sort((a,b)=>b.p-a.p||a.n.localeCompare(b.n)).slice(0, small?3:3);
+  const W = small ? 158 : 338, H = 158;
+  const line = t => `<div class="row" style="gap:5px;font-size:${small?11:12}px;line-height:1.35">
+    <span style="color:${p.fg}">[ ]</span>${small?'':`<span style="color:${p.dim}">${t.n}</span>`}
+    <span style="color:${p.hi};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">${esc(t.t)}</span>
+    ${t.p?`<span style="color:${p.warn};font-weight:700">${'!'.repeat(t.p)}</span>`:''}${!small&&t.g?`<span style="color:${p.tag}">#${t.g}</span>`:''}</div>`;
+  return `<div class="mono" style="width:${W}px;height:${H}px;border-radius:22px;overflow:hidden;background:${p.bg};display:flex;flex-direction:column;box-shadow:0 6px 20px rgba(0,0,0,.35)">
+    <div class="row" style="height:26px;background:${p.bar};padding:0 12px;gap:6px;font-size:11px;color:${p.hi}"><b>&gt;_</b><span style="flex:1">todo.exe</span><span style="font-size:10px;color:${p.dim}">09.29 화</span></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:${small?3:4}px;padding:8px 12px 10px">
+      <div style="font-size:${small?10:11}px"><span style="color:${p.dim}">C:\\todo&gt; </span><span style="color:${p.cmd}">ls --todo</span></div>
+      ${rows.map(line).join('')}
+      <div style="flex:1"></div>
+      <div class="row" style="gap:6px;font-size:${small?10:11}px"><span style="color:${p.ok}">[${small?'███░░░':'████░░░░░░'}]</span><span style="color:${p.hi}">3/7</span><span style="flex:1"></span>${small?'':`<span style="color:${p.dim}">연속 12일</span>`}<span style="color:${p.ok}">_</span></div>
+    </div></div>`;
+}
+
+function wallpaper() {
+  return `background: radial-gradient(90% 60% at 20% 15%, #1d3b3a 0%, transparent 60%), radial-gradient(80% 60% at 90% 80%, #2a2440 0%, transparent 60%), linear-gradient(180deg,#0e1518,#07090b);`;
+}
+
+function lockScreen() {
+  const s = IP ? 1 : 1.6;
+  const rect = `<div class="mono" style="width:${158*s}px;height:${72*s}px;padding:${8*s}px ${10*s}px;border-radius:${18*s}px;background:rgba(255,255,255,.14);backdrop-filter:blur(10px);color:#fff;font-size:${12*s}px;line-height:1.4">
+      <div style="font-weight:700;font-size:${13*s}px">C:\\todo&gt; 3/7</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">&gt; 주간 보고서 초안 작성 !!</div><div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">&gt; 앱 온보딩 와이어프레임 !</div></div>`;
+  const R = 26*s, circ = 2*Math.PI*R;
+  const circle = `<div style="position:relative;width:${72*s}px;height:${72*s}px;border-radius:50%;background:rgba(255,255,255,.14)">
+      <svg width="${72*s}" height="${72*s}" style="position:absolute;inset:0"><circle cx="${36*s}" cy="${36*s}" r="${R}" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="${6*s}"/>
+      <circle cx="${36*s}" cy="${36*s}" r="${R}" fill="none" stroke="#fff" stroke-width="${6*s}" stroke-linecap="round" stroke-dasharray="${circ*3/7} ${circ}" transform="rotate(-90 ${36*s} ${36*s})"/></svg>
+      <div class="mono" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;line-height:1.1"><span style="font-size:${10*s}px">&gt;_</span><span style="font-size:${18*s}px;font-weight:700">4</span></div></div>`;
+  return `<div class="ls" style="${wallpaper()}">
+    ${statusBar('#fff','transparent')}
+    <div style="text-align:center;margin-top:${IP?34:110}px">
+      <div style="font-size:${IP?19:26}px;font-weight:500;opacity:.9">9월 29일 화 <span class="mono" style="font-size:${IP?15:22}px;opacity:.95">&nbsp;&gt;_ 남은 할 일 4 · 연속 12일</span></div>
+      <div style="font-size:${IP?96:150}px;font-weight:600;line-height:1.05;letter-spacing:-2px;margin-top:2px">9:41</div>
+      <div class="row" style="justify-content:center;gap:${IP?12:18}px;margin-top:${IP?14:22}px">${rect}${circle}</div>
+    </div>
+    <div style="position:absolute;left:0;right:0;bottom:${IP?44:40}px;display:flex;justify-content:space-between;padding:0 ${IP?46:70}px">
+      ${[0,1].map(()=>`<div style="width:${IP?50:60}px;height:${IP?50:60}px;border-radius:50%;background:rgba(255,255,255,.14)"></div>`).join('')}</div>
+    <div style="position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:${IP?140:200}px;height:5px;border-radius:3px;background:#fff"></div>
+  </div>`;
+}
+
+function homeScreen() {
+  const icon = (i) => { const cols = ['#2c3a4a','#3a2f45','#2f4038','#4a3a2c','#353535','#2a3f48','#43303a','#3b4030']; return `<div style="width:62px;height:62px;border-radius:15px;background:${cols[i%cols.length]}"></div>`; };
+  const app = `<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><img src="icon.png" style="width:62px;height:62px;border-radius:15px"><span style="font-size:12px;color:#fff">todo.exe</span></div>`;
+  const cell = (i) => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">${icon(i)}<span style="height:17px"></span></div>`;
+  if (IP) {
+    return `<div class="ls" style="${wallpaper()}">${statusBar('#fff','transparent')}
+      <div style="padding:14px 26px 0">${homeWidget(P.cmd,'medium')}
+        <div style="display:grid;grid-template-columns:158px repeat(2,1fr);gap:22px 18px;margin-top:24px;align-items:start">
+          <div style="grid-row:span 2">${homeWidget(P.light,'small')}</div>${app}${cell(1)}${cell(2)}${cell(3)}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:22px 18px;margin-top:22px">${[4,5,6,7,0,1,2,3].map(cell).join('')}</div>
+      </div>
+      <div style="position:absolute;left:14px;right:14px;bottom:26px;height:92px;border-radius:32px;background:rgba(255,255,255,.14);display:flex;justify-content:space-around;align-items:center">${[5,6,7,0].map(icon).join('')}</div>
+      <div style="position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:140px;height:5px;border-radius:3px;background:#fff"></div></div>`;
+  }
+  return `<div class="ls" style="${wallpaper()}">${statusBar('#fff','transparent')}
+    <div style="padding:36px 40px 0">
+      <div class="row" style="gap:28px;align-items:flex-start;zoom:1.3">${homeWidget(P.cmd,'medium')}${homeWidget(P.light,'small')}</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:34px 24px;margin-top:40px;zoom:1.15">${app}${[1,2,3,4,5,6,7,0,1,2,3,4,5].map(cell).join('')}</div>
+    </div>
+    <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:24px;height:96px;padding:0 24px;border-radius:32px;background:rgba(255,255,255,.14);display:flex;gap:24px;align-items:center">${[5,6,7,0,1,2].map(icon).join('')}</div>
+  </div>`;
+}
+
+const SHOTS = {
+  1: { t:'할 일도 터미널처럼', s:'add · done · ls — 한 줄이면 끝', body:()=>mainScreen(P.cmd,{showPro:true, log:[['info',"'help' 를 입력하면 명령어 목록을 볼 수 있어요."],['cmd','C:\\todo> done 6'],['ok','✓ #06 완료']]}) },
+  2: { t:'잠금화면에서 바로 확인', s:'남은 할 일과 진행률 · 위젯은 PRO', body:lockScreen, bare:true },
+  3: { t:'명령어 한 줄이면 끝', s:'#태그와 ! 우선순위까지 한 번에 · 라이트 모드', body:()=>mainScreen(P.light,{showPro:true, input:'add 치과 예약하기 #life !', tasks:TASKS.slice(0,6), log:[['cmd','C:\\todo> add 메일 답장 3건 #work'],['ok','+ #06 추가됨']]}) },
+  4: { t:'홈 화면에도 CMD 감성', s:'작게 · 중간 · 크게 위젯 · PRO', body:homeScreen, bare:true },
+  5: { t:'연속 달성과 4주 잔디', s:'stats 로 한눈에 보는 기록', body:()=>statsScreen(P.cmd) },
+  6: { t:'테마 3종 + 라이트 모드', s:'', chips:true, body:()=>mainScreen(P.amber,{showPro:false, log:[['cmd','C:\\todo> theme amber'],['ok','테마 변경: amber']]}) },
+};
+
+const S = SHOTS[shot];
+const scale = C.screenW / C.appW;
+const frameW = C.screenW + C.bezel*2, frameH = C.screenH + C.bezel*2;
+const chips = S.chips ? `<div style="margin-top:${IP?12:18}px;font-size:${IP?14:20}px">${[['cmd',P.cmd],['phosphor',P.phosphor],['amber',P.amber],['light',P.light]].map(([n,p])=>`<span class="chip" style="background:${p.bg};color:${p.hi};border-color:${p.line}">${n}</span>`).join('')}</div>` : '';
+const inner = S.bare
+  ? `<div style="position:absolute;left:0;top:0;width:${C.appW}px;height:${C.appH}px;transform:scale(${scale});transform-origin:top left">${S.body()}</div>`
+  : S.body().replace('class="app" style="', `class="app" style="transform:scale(${scale});`);
+document.getElementById('root').innerHTML = `
+<div class="canvas" style="width:${C.w}px;height:${C.h}px">
+  <div class="cap" style="top:${C.capTop}px">
+    <div class="p" style="font-size:${C.pSize}px"><b>&gt;_</b> C:\\todo&gt;</div>
+    <div class="t" style="font-size:${C.tSize}px;margin-top:${IP?8:12}px">${S.t}</div>
+    ${S.s?`<div class="s" style="font-size:${C.sSize}px;margin-top:${IP?8:12}px">${S.s}</div>`:''}${chips}
+  </div>
+  <div class="frame" style="left:${(C.w-frameW)/2}px;top:${C.frameTop}px;width:${frameW}px;height:${frameH}px;border-radius:${C.rFrame}px">
+    <div class="screen" style="left:${C.bezel}px;top:${C.bezel}px;width:${C.screenW}px;height:${C.screenH}px;border-radius:${C.rScreen}px">${inner}</div>
+  </div>
+</div>`;
+</script>
+</body>
+</html>
