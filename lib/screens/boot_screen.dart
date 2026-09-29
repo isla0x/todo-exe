@@ -127,7 +127,15 @@ class _BootScreenState extends State<BootScreen> {
                               const SizedBox(height: 16),
                               Row(
                                 children: [
-                                  Text('[${'█' * cells}${'░' * (20 - cells)}]', style: termStyle(p.ok, size: 13)),
+                                  Flexible(
+                                    child: Text(
+                                      '[${'█' * cells}${'░' * (20 - cells)}]',
+                                      maxLines: 1,
+                                      softWrap: false,
+                                      overflow: TextOverflow.clip,
+                                      style: termStyle(p.ok, size: 13),
+                                    ),
+                                  ),
                                   const SizedBox(width: 10),
                                   Text('$pct%', style: termStyle(p.hi, size: 13)),
                                 ],

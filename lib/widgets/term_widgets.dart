@@ -53,8 +53,15 @@ class TitleBar extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text('todo.exe', style: termStyle(p.hi, size: 13)),
                 const SizedBox(width: 8),
-                Text(shortDate(now), style: termStyle(p.dim, size: 12)),
-                const Spacer(),
+                Expanded(
+                  child: Text(
+                    shortDate(now),
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.fade,
+                    style: termStyle(p.dim, size: 12),
+                  ),
+                ),
                 if (onStats != null || active == 'stats')
                   _TabLink(label: 'stats', active: active == 'stats', palette: p, onTap: onStats),
                 if (onHelp != null || active == 'help')
