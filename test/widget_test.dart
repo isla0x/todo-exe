@@ -23,6 +23,10 @@ void main() {
     await tester.tap(find.text('시작하기'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    // 처음 실행: 사용법 안내는 건너뛴다.
+    await tester.tap(find.text('[ ESC ] 건너뛰기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('이 줄을 탭하면 완료돼요'), findsOneWidget);
 
@@ -64,6 +68,10 @@ void main() {
     await tester.tap(find.text('시작하기'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    // 처음 실행: 사용법 안내는 건너뛴다.
+    await tester.tap(find.text('[ ESC ] 건너뛰기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     Future<void> type(String cmd) async {
       await tester.enterText(find.byType(TextField), cmd);
@@ -97,5 +105,50 @@ void main() {
     await type('theme amber');
     expect(store.palette.id, 'amber');
     expect(find.text('PRO'), findsNothing);
+  });
+
+  testWidgets('처음 실행: 사용법 안내 4장 → 시작하기 → 다음부터는 안 보임', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final store = TodoStore(clock: () => DateTime(2026, 9, 29, 13));
+    await store.load();
+    expect(store.onboarded, isFalse);
+
+    await tester.pumpWidget(TodoExeApp(store: store));
+    await tester.pump(const Duration(seconds: 2));
+    await tester.tap(find.text('시작하기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.textContaining('명령어로 쓰는'), findsOneWidget);
+    expect(find.text('[■□□□] 1/4'), findsOneWidget);
+    for (var i = 2; i <= 4; i++) {
+      await tester.tap(find.text('다음'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.textContaining('$i/4'), findsOneWidget);
+    }
+    expect(find.text('기록과 도움말'), findsOneWidget);
+    await tester.tap(find.text('시작하기'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('이 줄을 탭하면 완료돼요'), findsOneWidget);
+    expect(store.onboarded, isTrue);
+
+    // 앱을 다시 켜면 안내 없이 바로 목록.
+    final again = TodoStore(clock: () => DateTime(2026, 9, 29, 13));
+    await again.load();
+    expect(again.onboarded, isTrue);
+  });
+
+  test('예전부터 쓰던 사람(저장된 할 일이 있음)은 안내를 건너뛴다', () async {
+    SharedPreferences.setMockInitialValues({'todo_exe_state_v1': '{"tasks":[],"completions":[],"nextId":1}'});
+    final store = TodoStore(clock: () => DateTime(2026, 9, 29, 13));
+    await store.load();
+    expect(store.onboarded, isTrue);
   });
 }
