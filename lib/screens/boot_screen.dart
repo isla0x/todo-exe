@@ -112,7 +112,7 @@ class _BootScreenState extends State<BootScreen> {
                               ),
                               const SizedBox(height: 20),
                               Text('TODO [Version 1.0.0]', style: termStyle(p.hi)),
-                              Text('(c) 채은. 오늘도 하나씩, 천천히.', style: termStyle(p.dim, size: 13)),
+                              Text('오늘도 하나씩, 천천히.', style: termStyle(p.dim, size: 13)),
                               const SizedBox(height: 32),
                               Text.rich(TextSpan(children: [
                                 TextSpan(text: 'C:\\> ', style: termStyle(p.dim)),

@@ -146,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text('TODO [Version 1.0.0]', style: termStyle(p.hi)),
-                      Text('(c) 채은. 오늘도 하나씩, 천천히.', style: termStyle(p.dim, size: 13)),
+                      Text('오늘도 하나씩, 천천히.', style: termStyle(p.dim, size: 13)),
                       const SizedBox(height: 12),
                       Text.rich(TextSpan(children: [
                         TextSpan(text: 'C:\\todo> ', style: termStyle(p.dim)),
