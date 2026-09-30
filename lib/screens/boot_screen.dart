@@ -7,7 +7,6 @@ import '../state/todo_store.dart';
 import '../theme/term_palette.dart';
 import '../widgets/term_widgets.dart';
 import 'home_screen.dart';
-import 'onboarding_screen.dart';
 
 const _logo = '█████  ███  ████   ███ \n'
     '  █   █   █ █   █ █   █\n'
@@ -60,10 +59,7 @@ class _BootScreenState extends State<BootScreen> {
   }
 
   void _enter() {
-    final store = widget.store;
-    // 처음 실행이면 사용법 안내부터.
-    final Widget next = store.onboarded ? HomeScreen(store: store) : OnboardingScreen(store: store);
-    Navigator.of(context).pushReplacement(termRoute(next));
+    Navigator.of(context).pushReplacement(termRoute(HomeScreen(store: widget.store)));
   }
 
   @override

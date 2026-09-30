@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../state/todo_store.dart';
 import '../theme/term_palette.dart';
 import '../widgets/term_widgets.dart';
-import 'onboarding_screen.dart';
 import 'stats_screen.dart';
 
 /// (명령어, 인자, 설명, 예시)
@@ -54,12 +53,6 @@ class HelpScreen extends StatelessWidget {
                 const SizedBox(height: 10),
                 Text('명령어 목록', style: termStyle(p.hi)),
                 Text('<필수>  [선택]  |  또는', style: termStyle(p.dim, size: 13)),
-                const SizedBox(height: 10),
-                TermBoxButton(
-                  palette: p,
-                  label: '처음 사용법 안내 다시 보기',
-                  onTap: () => Navigator.of(context).push(termRoute(OnboardingScreen(store: store, replay: true))),
-                ),
                 const SizedBox(height: 10),
                 DashedDivider(color: p.line),
                 for (final e in _entries)

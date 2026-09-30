@@ -16,7 +16,6 @@ class TodoStore extends ChangeNotifier {
   }
 
   static const _key = 'todo_exe_state_v1';
-  static const _onboardKey = 'todo_exe_onboarded_v1';
   static const _maxLog = 4;
   static const _maxHistory = 50;
 
@@ -37,9 +36,6 @@ class TodoStore extends ChangeNotifier {
   List<LogLine> get log => List.unmodifiable(_log);
   List<String> get history => List.unmodifiable(_history);
   bool get isPro => pro?.isPro ?? false;
-
-  /// 처음 사용법 안내를 봤는지. (예전부터 쓰던 사람은 본 것으로 친다)
-  bool onboarded = false;
 
   /// 폰의 다크/라이트 설정. 앱이 바뀔 때마다 알려준다.
   Brightness _systemBrightness = Brightness.dark;
@@ -68,18 +64,12 @@ class TodoStore extends ChangeNotifier {
   Future<void> load() async {
     _prefs = await SharedPreferences.getInstance();
     final raw = _prefs!.getString(_key);
-    onboarded = (_prefs!.getBool(_onboardKey) ?? false) || raw != null;
     if (raw == null) return;
     try {
       _data = TodoData.fromJson(Map<String, dynamic>.from(jsonDecode(raw) as Map));
     } catch (e) {
       debugPrint('todo.exe: 저장된 데이터를 읽지 못해 새로 시작합니다. ($e)');
     }
-  }
-
-  Future<void> markOnboarded() async {
-    onboarded = true;
-    await _prefs?.setBool(_onboardKey, true);
   }
 
   /// 명령어를 실행하고, 열어야 할 화면이 있으면 그 이름을 돌려준다.
