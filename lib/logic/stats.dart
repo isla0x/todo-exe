@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import '../l10n/l10n.dart';
 import 'commands.dart';
 
 DateTime dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
@@ -133,9 +134,10 @@ String heatGlyph(int count) {
   return '█';
 }
 
-const weekdayKo = ['월', '화', '수', '목', '금', '토', '일'];
+/// 월~일 이름 (지금 언어로)
+List<String> weekdayNames() => [for (var i = 1; i <= 7; i++) weekdayName(i)];
 
 String two(int n) => n.toString().padLeft(2, '0');
 
-/// `09.29 화`
-String shortDate(DateTime d) => '${two(d.month)}.${two(d.day)} ${weekdayKo[d.weekday - 1]}';
+/// `09.29 화` (영어면 `09.29 Tue`)
+String shortDate(DateTime d) => '${two(d.month)}.${two(d.day)} ${weekdayName(d.weekday)}';

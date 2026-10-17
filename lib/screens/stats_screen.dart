@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../logic/stats.dart';
 import '../state/todo_store.dart';
 import '../theme/term_palette.dart';
@@ -46,21 +47,26 @@ class StatsScreen extends StatelessWidget {
                   decoration: BoxDecoration(border: Border.all(color: p.line)),
                   child: Column(
                     children: [
-                      _KeyValue(palette: p, k: '현재 목록', v: '${s.done} / ${s.total}', extra: '${s.pct}%', extraColor: p.ok),
-                      _KeyValue(palette: p, k: '이번 주 완료', v: '${s.weekTotal}건'),
-                      _KeyValue(palette: p, k: '연속 달성', v: '${s.streak}일', extra: '최고 ${s.bestStreak}일'),
+                      _KeyValue(palette: p, k: tr('st.current'), v: '${s.done} / ${s.total}', extra: '${s.pct}%', extraColor: p.ok),
+                      _KeyValue(palette: p, k: tr('st.week'), v: tr('st.count', {'n': s.weekTotal})),
                       _KeyValue(
                         palette: p,
-                        k: '최다 태그',
+                        k: tr('st.streak'),
+                        v: tr('st.days', {'n': s.streak}),
+                        extra: tr('st.best', {'n': s.bestStreak}),
+                      ),
+                      _KeyValue(
+                        palette: p,
+                        k: tr('st.toptag'),
                         v: s.tags.isEmpty ? '-' : _tagLabel(s.tags.first.tag),
                         vColor: p.tag,
-                        extra: s.tags.isEmpty ? null : '${s.tags.first.count}건',
+                        extra: s.tags.isEmpty ? null : tr('st.count', {'n': s.tags.first.count}),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 20),
-                _Heading(palette: p, text: '지난 7일'),
+                _Heading(palette: p, text: tr('st.last7')),
                 for (final e in s.last7)
                   _BarRow(
                     palette: p,
@@ -69,12 +75,12 @@ class StatsScreen extends StatelessWidget {
                     bar: textBar(e.count, dayMax),
                     barColor: p.ok,
                     value: '${e.count}',
-                    note: dayOf(e.day) == dayOf(now) ? '◀ 오늘' : null,
+                    note: dayOf(e.day) == dayOf(now) ? tr('st.today') : null,
                   ),
                 const SizedBox(height: 20),
-                _Heading(palette: p, text: '태그별 완료'),
+                _Heading(palette: p, text: tr('st.bytag')),
                 if (s.tags.isEmpty)
-                  Text('아직 완료 기록이 없어요.', style: termStyle(p.dim, size: 13))
+                  Text(tr('st.none'), style: termStyle(p.dim, size: 13))
                 else
                   for (final t in s.tags)
                     _BarRow(
@@ -86,14 +92,14 @@ class StatsScreen extends StatelessWidget {
                       value: '${t.count}',
                     ),
                 const SizedBox(height: 20),
-                _Heading(palette: p, text: '최근 4주'),
+                _Heading(palette: p, text: tr('st.4w')),
                 _Heatmap(palette: p, stats: s, today: dayOf(now)),
                 const SizedBox(height: 8),
                 Text.rich(TextSpan(children: [
-                  TextSpan(text: '적음 ', style: termStyle(p.dim, size: 12)),
+                  TextSpan(text: tr('st.few'), style: termStyle(p.dim, size: 12)),
                   TextSpan(text: '·', style: termStyle(p.line, size: 12)),
                   TextSpan(text: ' ░ ▒ ▓ █ ', style: termStyle(p.ok, size: 12)),
-                  TextSpan(text: '많음', style: termStyle(p.dim, size: 12)),
+                  TextSpan(text: tr('st.many'), style: termStyle(p.dim, size: 12)),
                 ])),
               ],
             ),
@@ -105,7 +111,7 @@ class StatsScreen extends StatelessWidget {
               child: TermWideButton(
                 palette: p,
                 keyLabel: '[ ESC ]',
-                label: '목록으로',
+                label: tr('btn.back'),
                 onTap: () => Navigator.of(context).maybePop(),
               ),
             ),
@@ -115,7 +121,7 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  static String _tagLabel(String tag) => tag == '-' ? '(태그 없음)' : '#$tag';
+  static String _tagLabel(String tag) => tag == '-' ? tr('st.notag') : '#$tag';
 }
 
 class _Heading extends StatelessWidget {
@@ -155,7 +161,7 @@ class _KeyValue extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          SizedBox(width: 100, child: Text(k, style: termStyle(p.dim))),
+          SizedBox(width: 124, child: Text(k, style: termStyle(p.dim))),
           Text(v, style: termStyle(vColor ?? p.hi)),
           if (extra != null) ...[
             const SizedBox(width: 10),
@@ -222,7 +228,7 @@ class _Heatmap extends StatelessWidget {
     final p = palette;
     final style = termStyle(p.dim, size: 13);
     return Semantics(
-      label: '최근 4주 하루별 완료량. 연속 달성 ${stats.streak}일.',
+      label: tr('st.sem', {'n': stats.streak}),
       excludeSemantics: true,
       child: Table(
         columnWidths: const {0: FixedColumnWidth(52)},
@@ -230,7 +236,7 @@ class _Heatmap extends StatelessWidget {
         children: [
           TableRow(children: [
             const SizedBox(height: 24),
-            for (final w in weekdayKo) Center(child: Text(w, style: style)),
+            for (final w in weekdayNames()) Center(child: Text(w, style: style)),
           ]),
           for (var r = 0; r < 4; r++)
             TableRow(children: [

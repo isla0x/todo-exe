@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../l10n/l10n.dart';
 import '../logic/stats.dart';
 import '../state/todo_store.dart';
 import '../theme/term_palette.dart';
@@ -68,13 +69,13 @@ class _BootScreenState extends State<BootScreen> {
     final p = store.palette;
     final now = store.now();
     final d = store.data;
-    final date = '${now.year}-${two(now.month)}-${two(now.day)} (${weekdayKo[now.weekday - 1]})';
+    final date = '${now.year}-${two(now.month)}-${two(now.day)} (${weekdayName(now.weekday)})';
     final lines = [
-      ('설정 불러오기', 'config'),
-      ('할 일 불러오기', '${d.tasks.length}건'),
-      ('날짜 확인', date),
-      ('명령어 해석기', 'v1.0'),
-      ('테마 적용', p.isLight ? '${p.id} · light' : p.id),
+      (tr('boot.config'), 'config'),
+      (tr('boot.tasks'), tr('boot.count', {'n': d.tasks.length})),
+      (tr('boot.date'), date),
+      (tr('boot.parser'), 'v1.0'),
+      (tr('boot.theme'), p.isLight ? '${p.id} · light' : p.id),
     ];
     final cells = (_step * 20 / _steps).round();
     final pct = (_step * 100 / _steps).round();
@@ -112,7 +113,7 @@ class _BootScreenState extends State<BootScreen> {
                               ),
                               const SizedBox(height: 20),
                               Text('TODO [Version 1.0.0]', style: termStyle(p.hi)),
-                              Text('오늘도 하나씩, 천천히.', style: termStyle(p.dim, size: 13)),
+                              Text(tr('tag'), style: termStyle(p.dim, size: 13)),
                               const SizedBox(height: 32),
                               Text.rich(TextSpan(children: [
                                 TextSpan(text: 'C:\\> ', style: termStyle(p.dim)),
@@ -142,7 +143,7 @@ class _BootScreenState extends State<BootScreen> {
                               ),
                               const Spacer(),
                               const SizedBox(height: 24),
-                              Text('Tip: 명령어 없이 입력하면 바로 할 일이 추가돼요.', style: termStyle(p.dim, size: 13)),
+                              Text(tr('boot.tip'), style: termStyle(p.dim, size: 13)),
                               const SizedBox(height: 14),
                               AnimatedOpacity(
                                 opacity: _ready ? 1 : 0,
@@ -152,7 +153,7 @@ class _BootScreenState extends State<BootScreen> {
                                   child: TermWideButton(
                                     palette: p,
                                     keyLabel: '[ ENTER ]',
-                                    label: '시작하기',
+                                    label: tr('btn.start'),
                                     onTap: _enter,
                                     trailing: BlinkingCursor(style: termStyle(p.hi, size: 15)),
                                   ),

@@ -1,13 +1,15 @@
 name: todo_exe
 description: "todo.exe — Windows cmd 느낌의 명령어 입력형 투두 앱"
 publish_to: "none"
-version: 1.0.2+7
+version: 1.0.3+8
 
 environment:
   sdk: ^3.5.0
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
   shared_preferences: ^2.3.0
   home_widget: ">=0.9.0 <0.11.0"

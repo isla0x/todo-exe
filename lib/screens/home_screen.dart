@@ -3,12 +3,14 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/l10n.dart';
 import '../logic/commands.dart';
 import '../models/task.dart';
 import '../state/todo_store.dart';
 import '../theme/term_palette.dart';
 import '../widgets/term_widgets.dart';
 import 'help_screen.dart';
+import 'lang_screen.dart';
 import 'pro_screen.dart';
 import 'stats_screen.dart';
 
@@ -30,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   TodoStore get store => widget.store;
 
-  static const _chips = ['add', 'done', 'edit', 'rm', 'clear', 'cls', 'help'];
+  static const _chips = ['add', 'done', 'edit', 'rm', 'clear', 'cls', 'lang', 'help'];
   static const _prefillChips = {'add', 'done', 'edit', 'rm'};
 
   @override
@@ -67,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final Widget page = switch (route) {
       'stats' => StatsScreen(store: store),
       'pro' || 'restore' => ProScreen(store: store),
+      'lang' => LangScreen(store: store),
       _ => HelpScreen(store: store),
     };
     _focus.unfocus();
@@ -146,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text('TODO [Version 1.0.0]', style: termStyle(p.hi)),
-                      Text('오늘도 하나씩, 천천히.', style: termStyle(p.dim, size: 13)),
+                      Text(tr('tag'), style: termStyle(p.dim, size: 13)),
                       const SizedBox(height: 12),
                       Text.rich(TextSpan(children: [
                         TextSpan(text: 'C:\\todo> ', style: termStyle(p.dim)),
@@ -166,7 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 14),
                       Row(
                         children: [
-                          Text('진행', style: termStyle(p.dim, size: 13)),
+                          Text(tr('progress'), style: termStyle(p.dim, size: 13)),
                           const SizedBox(width: 10),
                           Text('[${'█' * cells}${'░' * (10 - cells)}]', style: termStyle(p.ok, size: 13)),
                           const SizedBox(width: 10),
@@ -182,9 +185,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? Padding(
                                 padding: const EdgeInsets.only(top: 16),
                                 child: Text.rich(TextSpan(children: [
-                                  TextSpan(text: '표시할 항목이 없습니다. ', style: termStyle(p.dim)),
+                                  TextSpan(text: tr('list.empty.a'), style: termStyle(p.dim)),
                                   TextSpan(text: 'add', style: termStyle(p.cmd)),
-                                  TextSpan(text: ' 로 추가해 보세요.', style: termStyle(p.dim)),
+                                  TextSpan(text: tr('list.empty.b'), style: termStyle(p.dim)),
                                 ])),
                               )
                             : ListView.builder(
@@ -281,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Focus(
                       onKeyEvent: _onKey,
                       child: Semantics(
-                        label: '명령어 입력',
+                        label: tr('sem.input'),
                         child: TextField(
                           controller: _ctrl,
                           focusNode: _focus,
@@ -293,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           autocorrect: false,
                           textInputAction: TextInputAction.send,
                           decoration: InputDecoration.collapsed(
-                            hintText: 'add 할 일 #태그 !',
+                            hintText: tr('input.hint'),
                             hintStyle: termStyle(p.dim, size: 16, height: 1.2),
                           ),
                           onChanged: (_) => _histIdx = null,
@@ -308,7 +311,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   Semantics(
                     button: true,
-                    label: '실행',
+                    label: tr('sem.run'),
                     excludeSemantics: true,
                     child: InkWell(
                       onTap: () {
@@ -360,7 +363,7 @@ class _TaskRow extends StatelessWidget {
             child: Semantics(
               button: true,
               checked: t.done,
-              label: '${t.done ? '완료 취소' : '완료 표시'}: ${t.text}',
+              label: tr(t.done ? 'sem.undone' : 'sem.done', {'text': t.text}),
               excludeSemantics: true,
               child: InkWell(
                 onTap: onToggle,
@@ -410,7 +413,7 @@ class _TaskRow extends StatelessWidget {
           ),
           Semantics(
             button: true,
-            label: '삭제: ${t.text}',
+            label: tr('sem.rm', {'text': t.text}),
             excludeSemantics: true,
             child: InkWell(
               onTap: onRemove,

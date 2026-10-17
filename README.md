@@ -30,6 +30,7 @@ Windows cmd 느낌의 명령어 입력형 투두 앱 (Flutter).
 | `stats` | 통계 화면 | |
 | `theme [cmd \| phosphor \| amber]` | 색 테마 | `theme amber` |
 | `crt [on \| off]` | 주사선 효과 | |
+| `lang [auto \| ko \| en \| ja \| zh \| fr]` | 언어 (인자 없이 쓰면 선택 화면) | `lang fr` |
 
 `!` 개수가 우선순위(1~3), `#태그`는 첫 번째 것만 인식해요. 하드웨어 키보드가 있으면 ↑ ↓ 로 이전 명령어를 불러올 수 있어요.
 
@@ -104,6 +105,14 @@ flutter test         # 테스트
 - 위젯에 "할 일이 없어요"만 나옴: 두 타깃의 App Group 이름이 정확히 같은지 확인하고 앱을 한 번 열기
 - 무료 Apple ID 에서 App Groups 추가가 안 되면 알려주세요
 
+## 언어 (한국어 · English · 日本語 · 中文 · Français)
+
+- 처음에는 `auto`: 폰 언어를 따라가고, 지원하지 않는 언어면 영어예요. 바꾸려면 `lang` 칩이나 `lang fr` 같은 명령어.
+- 문구는 `lib/l10n/strings_xx.dart` (언어마다 한 파일). 키는 모든 언어에 있어야 하고 `{n}` 같은 자리도 같아야 해요 (`test/l10n_test.dart` 가 확인).
+- 새 언어를 더하려면 `Lang` 에 추가하고 `strings_xx.dart` 를 만든 뒤 `lib/l10n/l10n.dart` 의 표에 연결해요.
+- 위젯은 앱이 지금 언어의 문구를 스냅샷에 담아 보내요 (`widgetStringKeys`). 위젯 고르는 화면의 설명만 폰 언어를 따라요.
+- 사용자가 직접 쓴 할 일과 튜토리얼 줄은 번역되지 않아요 (처음 설치한 때의 언어로 저장돼요).
+
 ## 구조
 
 ```
@@ -115,7 +124,8 @@ lib/
   state/todo_store.dart     상태 + 기기 저장 (shared_preferences)
   theme/term_palette.dart   cmd / phosphor / amber 색
   widgets/term_widgets.dart 제목줄, 버튼, 아이콘
-  screens/                  boot, home, help, stats
+  l10n/                     언어별 문구 (strings_ko · en · ja · zh · fr) + tr()
+  screens/                  boot, home, help, stats, pro, lang
   widget_sync.dart          iOS 위젯으로 데이터 전달
 ios_widget/                 iOS 위젯 SwiftUI 코드 (tool/install_ios_widget.sh 로 복사)
 test/                       명령어·통계·화면·위젯 데이터 테스트

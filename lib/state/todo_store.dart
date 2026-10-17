@@ -1,16 +1,21 @@
 import 'dart:convert';
+import 'dart:ui' show Locale, PlatformDispatcher;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show Brightness;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/l10n.dart';
 import '../logic/commands.dart';
 import '../pro/pro_controller.dart';
 import '../theme/term_palette.dart';
 
 /// 앱 상태. 명령어를 실행하고 기기에 저장한다.
 class TodoStore extends ChangeNotifier {
-  TodoStore({DateTime Function()? clock, this.pro}) : _clock = clock ?? DateTime.now {
+  TodoStore({DateTime Function()? clock, this.pro, Locale? deviceLocale}) : _clock = clock ?? DateTime.now {
+    // 처음 설치했을 때 튜토리얼이 폰 언어로 나오도록, 만들자마자 폰 언어를 읽는다.
+    L10n.syncDevice(deviceLocale ?? PlatformDispatcher.instance.locale);
+    L10n.pref = L10n.autoPref;
     _data = TodoData.initial(_clock());
     pro?.addListener(notifyListeners);
   }
@@ -27,13 +32,17 @@ class TodoStore extends ChangeNotifier {
   late TodoData _data;
   SharedPreferences? _prefs;
 
-  final List<LogLine> _log = [
-    const LogLine(LogKind.info, "'help' 를 입력하면 명령어 목록을 볼 수 있어요."),
-  ];
+  final List<LogLine> _log = [];
   final List<String> _history = [];
 
+  /// 맨 위 안내 한 줄. 로그가 쌓이거나 cls 를 하면 사라진다. (언어가 바뀌면 같이 바뀌도록 그릴 때 만든다)
+  bool _hintGone = false;
+
   TodoData get data => _data;
-  List<LogLine> get log => List.unmodifiable(_log);
+  List<LogLine> get log => List.unmodifiable([
+        if (!_hintGone && _log.length < _maxLog) LogLine(LogKind.info, tr('hint.help')),
+        ..._log,
+      ]);
   List<String> get history => List.unmodifiable(_history);
   bool get isPro => pro?.isPro ?? false;
 
@@ -64,12 +73,20 @@ class TodoStore extends ChangeNotifier {
   Future<void> load() async {
     _prefs = await SharedPreferences.getInstance();
     final raw = _prefs!.getString(_key);
-    if (raw == null) return;
-    try {
-      _data = TodoData.fromJson(Map<String, dynamic>.from(jsonDecode(raw) as Map));
-    } catch (e) {
-      debugPrint('todo.exe: 저장된 데이터를 읽지 못해 새로 시작합니다. ($e)');
+    if (raw != null) {
+      try {
+        _data = TodoData.fromJson(Map<String, dynamic>.from(jsonDecode(raw) as Map));
+      } catch (e) {
+        debugPrint('todo.exe: 저장된 데이터를 읽지 못해 새로 시작합니다. ($e)');
+      }
     }
+    L10n.pref = _data.lang;
+  }
+
+  /// 폰 언어가 바뀌었을 때. 언어를 'auto' 로 두었다면 화면이 바로 따라간다.
+  void deviceLocaleChanged(Locale locale) {
+    L10n.syncDevice(locale);
+    notifyListeners();
   }
 
   /// 명령어를 실행하고, 열어야 할 화면이 있으면 그 이름을 돌려준다.
@@ -95,6 +112,7 @@ class TodoStore extends ChangeNotifier {
     _data = out.data;
     if (out.clearLog) {
       _log.clear();
+      _hintGone = true;
     } else {
       _appendLog(out.lines);
     }

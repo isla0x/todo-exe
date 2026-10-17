@@ -1,3 +1,4 @@
+import '../l10n/l10n.dart';
 import '../models/task.dart';
 
 /// 명령어 해석과 실행. UI와 저장소에 의존하지 않는 순수 로직이라 테스트하기 쉽다.
@@ -59,6 +60,7 @@ class TodoData {
     this.theme = 'cmd',
     this.crt = false,
     this.mode = 'auto',
+    this.lang = 'auto',
   });
 
   final List<Task> tasks;
@@ -68,6 +70,9 @@ class TodoData {
   final String theme;
   final bool crt;
   final String mode;
+
+  /// 'auto'(폰 언어를 따름) 또는 언어 코드 (ko · en · ja · zh · fr)
+  final String lang;
 
   int get doneCount => tasks.where((t) => t.done).length;
 
@@ -79,6 +84,7 @@ class TodoData {
     String? theme,
     bool? crt,
     String? mode,
+    String? lang,
   }) =>
       TodoData(
         tasks: tasks ?? this.tasks,
@@ -88,15 +94,16 @@ class TodoData {
         theme: theme ?? this.theme,
         crt: crt ?? this.crt,
         mode: mode ?? this.mode,
+        lang: lang ?? this.lang,
       );
 
   /// 처음 실행했을 때 보여줄 튜토리얼 목록.
   factory TodoData.initial(DateTime now) {
     final seed = [
-      ('이 줄을 탭하면 완료돼요', '', 0),
-      ('아래 입력창에 할 일을 쓰고 Enter', '', 1),
-      ('help 를 입력해서 명령어 보기', '', 0),
-      ('rm 버튼으로 이 줄 지우기', '', 0),
+      (tr('tut.1'), '', 0),
+      (tr('tut.2'), '', 1),
+      (tr('tut.3'), '', 0),
+      (tr('tut.4'), '', 0),
     ];
     return TodoData(
       tasks: [
@@ -115,6 +122,7 @@ class TodoData {
         'theme': theme,
         'crt': crt,
         'mode': mode,
+        'lang': lang,
       };
 
   factory TodoData.fromJson(Map<String, dynamic> json) {
@@ -132,6 +140,7 @@ class TodoData {
       theme: themeIds.contains(theme) ? theme : 'cmd',
       crt: (json['crt'] as bool?) ?? false,
       mode: modeIds.contains(mode) ? mode : 'auto',
+      lang: L10n.cleanPref(json['lang'] as String?),
     );
   }
 }
@@ -173,13 +182,13 @@ class CommandOutcome {
   /// `cls` 일 때 true.
   final bool clearLog;
 
-  /// 열어야 할 화면 ('stats' | 'help').
+  /// 열어야 할 화면 ('stats' | 'help' | 'pro' | 'restore' | 'lang').
   final String? route;
 }
 
 const knownCommands = {
   'add', 'done', 'undo', 'edit', 'rm', 'ls', 'clear', 'help', 'stats', 'theme', 'crt', //
-  'upgrade', 'pro', 'restore', 'mode',
+  'upgrade', 'pro', 'restore', 'mode', 'lang',
 };
 
 /// 무료로 쓸 수 있는 테마.
@@ -212,7 +221,7 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
 
   void denied(String what) {
     err('Access is denied.');
-    info("$what 은(는) PRO 기능이에요. 'upgrade' 로 열 수 있어요.");
+    info(tr('denied.info', {'what': what}));
   }
 
   int findIndex(String a) {
@@ -221,30 +230,30 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
   }
 
   void notFound(String usage, String a) {
-    err(a.isEmpty ? '사용법: $usage' : "'$a' 번 항목을 찾을 수 없어요.");
+    err(a.isEmpty ? tr('err.usage', {'u': usage}) : tr('err.nf', {'a': a}));
   }
 
   switch (cmd) {
     case 'add':
       if (arg.isEmpty) {
-        err('사용법: add <할 일> [#태그] [!]');
+        err(tr('err.usage', {'u': tr('u.add')}));
         break;
       }
       final p = parseTaskInput(arg);
       final t = Task(id: d.nextId, text: p.text, tag: p.tag, priority: p.priority, createdAt: now);
       data = d.copyWith(tasks: [...d.tasks, t], nextId: d.nextId + 1);
-      ok('+ ${taskNum(t.id)} 추가됨');
+      ok(tr('ok.add', {'n': taskNum(t.id)}));
 
     case 'done' || 'undo':
       final idx = findIndex(arg);
       if (idx < 0) {
-        notFound('$cmd <번호>', arg);
+        notFound(tr('u.num', {'cmd': cmd}), arg);
         break;
       }
       final t = d.tasks[idx];
       final makeDone = cmd == 'done';
       if (t.done == makeDone) {
-        info('${taskNum(t.id)} 는 이미 ${makeDone ? '완료' : '할 일'} 상태예요.');
+        info(tr('st.already', {'n': taskNum(t.id), 'state': tr(makeDone ? 'state.done' : 'state.todo')}));
         break;
       }
       final tasks = [...d.tasks]..[idx] = t.withDone(makeDone, now);
@@ -256,7 +265,7 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
         if (ci >= 0) comps = [...comps]..removeAt(ci);
       }
       data = d.copyWith(tasks: tasks, completions: comps);
-      ok(makeDone ? '✓ ${taskNum(t.id)} 완료' : '~ ${taskNum(t.id)} 되돌림');
+      ok(tr(makeDone ? 'ok.done' : 'ok.undo', {'n': taskNum(t.id)}));
 
     case 'edit':
       final idPart = arg.split(_spaceRe).first;
@@ -264,9 +273,9 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
       final idx = findIndex(idPart);
       if (idx < 0 || rest.isEmpty) {
         if (idx < 0 && idPart.isNotEmpty) {
-          notFound('edit <번호> <내용>', idPart);
+          notFound(tr('u.edit'), idPart);
         } else {
-          err('사용법: edit <번호> <내용>');
+          err(tr('err.usage', {'u': tr('u.edit')}));
         }
         break;
       }
@@ -278,17 +287,17 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
         priority: _priRe.hasMatch(rest) ? p.priority : t.priority,
       );
       data = d.copyWith(tasks: [...d.tasks]..[idx] = updated);
-      ok('* ${taskNum(t.id)} 수정됨');
+      ok(tr('ok.edit', {'n': taskNum(t.id)}));
 
     case 'rm':
       final idx = findIndex(arg);
       if (idx < 0) {
-        notFound('rm <번호>', arg);
+        notFound(tr('u.num', {'cmd': 'rm'}), arg);
         break;
       }
       final t = d.tasks[idx];
       data = d.copyWith(tasks: [...d.tasks]..removeAt(idx));
-      ok('- ${taskNum(t.id)} 삭제됨');
+      ok(tr('ok.rm', {'n': taskNum(t.id)}));
 
     case 'ls':
       TaskFilter? f;
@@ -302,25 +311,25 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
         f = TaskFilter(FilterKind.tag, arg.substring(1));
       }
       if (f == null) {
-        err("ls: 알 수 없는 옵션 '$arg'");
+        err(tr('ls.bad', {'a': arg}));
         break;
       }
       data = d.copyWith(filter: f);
-      info('${d.tasks.where(f.matches).length}개 항목');
+      info(tr('ls.count', {'n': d.tasks.where(f.matches).length}));
 
     case 'clear':
       final n = d.doneCount;
       if (n == 0) {
-        info('정리할 완료 항목이 없어요.');
+        info(tr('clear.none'));
         break;
       }
       data = d.copyWith(tasks: d.tasks.where((t) => !t.done).toList());
-      ok('완료 항목 $n건 정리됨');
+      ok(tr('clear.ok', {'n': n}));
 
     case 'help':
-      info('add · done · undo · edit · rm · ls');
-      info('clear · cls · stats · theme · mode · crt · upgrade');
-      info('자세한 설명은 상단 help');
+      info(tr('help.1'));
+      info(tr('help.2'));
+      info(tr('help.3'));
 
     case 'stats':
       route = 'stats';
@@ -334,32 +343,32 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
     case 'mode':
       final a = arg.toLowerCase();
       if (a.isEmpty) {
-        info('현재 모드: ${d.mode}  (${modeIds.join(' | ')})');
+        info(tr('mode.cur', {'m': d.mode, 'list': modeIds.join(' | ')}));
       } else if (!modeIds.contains(a)) {
-        err("mode: '$arg' 는 없는 모드예요. (${modeIds.join(' | ')})");
+        err(tr('mode.bad', {'a': arg, 'list': modeIds.join(' | ')}));
       } else {
         data = d.copyWith(mode: a);
-        ok('모드 변경: $a');
-        if (pro && d.theme != freeTheme) info('밝은 모드는 cmd 테마에서만 보여요.');
+        ok(tr('mode.set', {'m': a}));
+        if (pro && d.theme != freeTheme) info(tr('mode.note'));
       }
 
     case 'theme':
       final a = arg.toLowerCase();
       if (a.isEmpty) {
-        info('현재 테마: ${pro ? d.theme : freeTheme}  (${themeIds.join(' | ')})');
-        if (!pro) info("phosphor · amber 는 PRO 테마예요. 'upgrade'");
+        info(tr('theme.cur', {'t': pro ? d.theme : freeTheme, 'list': themeIds.join(' | ')}));
+        if (!pro) info(tr('theme.pro'));
       } else if (!themeIds.contains(a)) {
-        err("theme: '$arg' 는 없는 테마예요. (${themeIds.join(' | ')})");
+        err(tr('theme.bad', {'a': arg, 'list': themeIds.join(' | ')}));
       } else if (a != freeTheme && !pro) {
-        denied('$a 테마');
+        denied(tr('denied.theme', {'a': a}));
       } else {
         data = d.copyWith(theme: a);
-        ok('테마 변경: $a');
+        ok(tr('theme.set', {'t': a}));
       }
 
     case 'crt':
       if (!pro) {
-        denied('crt 효과');
+        denied(tr('denied.crt'));
         break;
       }
       final a = arg.toLowerCase();
@@ -370,11 +379,27 @@ CommandOutcome runCommand(TodoData d, String raw, DateTime now, {bool pro = fals
         _ => null,
       };
       if (next == null) {
-        err('사용법: crt [on | off]');
+        err(tr('err.usage', {'u': tr('u.crt')}));
         break;
       }
       data = d.copyWith(crt: next);
       ok('crt ${next ? 'on' : 'off'}');
+
+    case 'lang':
+      final a = arg.toLowerCase();
+      String show(String pref) =>
+          pref == L10n.autoPref ? 'auto (${L10n.current.label})' : (L10n.langFromCode(pref)?.label ?? pref);
+      if (a.isEmpty) {
+        info(tr('lang.cur', {'l': show(L10n.pref), 'list': L10n.prefs.join(' | ')}));
+        route = 'lang';
+      } else if (!L10n.isPref(a)) {
+        err(tr('lang.bad', {'a': arg, 'list': L10n.prefs.join(' | ')}));
+      } else {
+        // 앞으로 나오는 문구(이 줄 포함)가 새 언어로 나온다.
+        L10n.pref = a;
+        data = d.copyWith(lang: a);
+        ok(tr('lang.set', {'l': show(a)}));
+      }
   }
 
   return CommandOutcome(data, lines, route: route);

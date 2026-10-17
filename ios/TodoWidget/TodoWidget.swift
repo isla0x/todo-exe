@@ -36,6 +36,19 @@ struct TodoSnapshot: Decodable {
     let total: Int
     let streak: Int
     let todo: [TodoItem]
+    /// 월~일 이름 (월요일부터, 앱 언어). 예전 데이터에는 없을 수 있다.
+    let wd: [String]?
+    /// 앱이 지금 언어로 만들어 보낸 문구. 예전 데이터에는 없을 수 있다.
+    let s: [String: String]?
+
+    /// 문구 하나. 앱이 보낸 게 없으면 [fallback]. `{n}` 같은 자리는 [args] 로 채운다.
+    func t(_ key: String, _ fallback: String, _ args: [String: String] = [:]) -> String {
+        var out = s?[key] ?? fallback
+        for (k, v) in args {
+            out = out.replacingOccurrences(of: "{\(k)}", with: v)
+        }
+        return out
+    }
 
     var left: Int { max(0, total - done) }
     var isPro: Bool { pro ?? false }
@@ -54,7 +67,7 @@ struct TodoSnapshot: Decodable {
         TermColors.of(isPro ? theme : "cmd", light: isLight(scheme))
     }
 
-    static let empty = TodoSnapshot(pro: false, theme: "cmd", mode: "auto", done: 0, total: 0, streak: 0, todo: [])
+    static let empty = TodoSnapshot(pro: false, theme: "cmd", mode: "auto", done: 0, total: 0, streak: 0, todo: [], wd: nil, s: nil)
 
     static let sample = TodoSnapshot(
         pro: true, theme: "cmd", mode: "auto", done: 3, total: 7, streak: 12,
@@ -63,7 +76,8 @@ struct TodoSnapshot: Decodable {
             TodoItem(n: "#03", t: "앱 온보딩 와이어프레임", p: 1, g: "side"),
             TodoItem(n: "#05", t: "책 20페이지 읽기", p: 0, g: "life"),
             TodoItem(n: "#07", t: "운동 30분", p: 0, g: "health"),
-        ]
+        ],
+        wd: nil, s: nil
     )
 
     static func load() -> TodoSnapshot {
@@ -132,12 +146,26 @@ private func textBar(done: Int, total: Int, width: Int) -> String {
     return "[" + String(repeating: "█", count: cells) + String(repeating: "░", count: width - cells) + "]"
 }
 
-/// 09.29 화
-private func shortDate(_ date: Date) -> String {
+/// 09.29 화  (요일 이름은 앱 언어. 앱이 안 보냈으면 폰 언어)
+private func shortDate(_ date: Date, _ wd: [String]?) -> String {
     let f = DateFormatter()
-    f.locale = Locale(identifier: "ko_KR")
-    f.dateFormat = "MM.dd E"
-    return f.string(from: date)
+    guard let wd, wd.count == 7 else {
+        f.dateFormat = "MM.dd E"
+        return f.string(from: date)
+    }
+    f.dateFormat = "MM.dd"
+    let weekday = Calendar.current.component(.weekday, from: date) // 1 = 일요일
+    return f.string(from: date) + " " + wd[(weekday + 5) % 7]
+}
+
+/// 위젯 고르는 화면의 설명. 이 글은 앱 설정이 아니라 폰 언어를 따른다.
+private func widgetDescription() -> String {
+    let lang = Locale.preferredLanguages.first ?? "en"
+    if lang.hasPrefix("ko") { return "남은 할 일과 진행률을 cmd 스타일로 보여줘요." }
+    if lang.hasPrefix("ja") { return "残りのやることと進捗を cmd スタイルで表示します。" }
+    if lang.hasPrefix("zh") { return "以 cmd 风格显示剩余待办和进度。" }
+    if lang.hasPrefix("fr") { return "Affiche les tâches restantes et la progression, façon cmd." }
+    return "Shows your remaining tasks and progress, cmd style."
 }
 
 // MARK: - 타임라인
@@ -189,7 +217,7 @@ struct HomeWidgetView: View {
                 Text(">_").font(mono(11, .bold)).foregroundColor(c.hi)
                 Text("todo.exe").font(mono(11)).foregroundColor(c.hi)
                 Spacer(minLength: 4)
-                Text(shortDate(entry.date)).font(mono(10)).foregroundColor(c.dim).lineLimit(1)
+                Text(shortDate(entry.date, s.wd)).font(mono(10)).foregroundColor(c.dim).lineLimit(1)
             }
             .padding(.horizontal, 12)
             .frame(height: 26)
@@ -201,10 +229,10 @@ struct HomeWidgetView: View {
                     .lineLimit(1)
 
                 if rows.isEmpty {
-                    Text(s.total == 0 ? "할 일이 없어요." : "✓ 모두 완료!")
+                    Text(s.total == 0 ? s.t("w.empty", "No tasks.") : s.t("w.done", "✓ All done!"))
                         .font(mono(12)).foregroundColor(s.total == 0 ? c.dim : c.ok)
                     if s.total == 0 {
-                        (Text("add").foregroundColor(c.cmd) + Text(" 로 추가해 보세요").foregroundColor(c.dim))
+                        (Text("add").foregroundColor(c.cmd) + Text(s.t("w.add.post", " to add one")).foregroundColor(c.dim))
                             .font(mono(11))
                     }
                 } else {
@@ -224,7 +252,7 @@ struct HomeWidgetView: View {
                     Text("\(s.done)/\(s.total)").foregroundColor(c.hi)
                     Spacer(minLength: 0)
                     if !small {
-                        Text("연속 \(s.streak)일").foregroundColor(c.dim)
+                        Text(s.t("w.streak", "{n}-day streak", ["n": "\(s.streak)"])).foregroundColor(c.dim)
                     }
                     Text("_").foregroundColor(c.ok)
                 }
@@ -274,7 +302,7 @@ struct LockRectView: View {
                 .font(mono(13, .bold))
                 .widgetAccentable()
             if snap.todo.isEmpty {
-                Text(snap.total == 0 ? "> 할 일 없음" : "> 모두 완료 ✓").font(mono(12))
+                Text(snap.total == 0 ? snap.t("w.none", "> No tasks") : snap.t("w.alldone", "> All done ✓")).font(mono(12))
             } else {
                 ForEach(Array(snap.todo.prefix(2)), id: \.self) { item in
                     Text("> " + item.t + (item.p > 0 ? " " + String(repeating: "!", count: item.p) : ""))
@@ -307,7 +335,7 @@ struct LockInlineView: View {
     let snap: TodoSnapshot
 
     var body: some View {
-        Text(">_ 남은 할 일 \(snap.left) · 연속 \(snap.streak)일")
+        Text(snap.t("w.inline", ">_ {l} left · {s}-day streak", ["l": "\(snap.left)", "s": "\(snap.streak)"]))
     }
 }
 
@@ -318,6 +346,7 @@ struct LockedHomeView: View {
     let date: Date
     let family: WidgetFamily
     let c: TermColors
+    let snap: TodoSnapshot
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -325,7 +354,7 @@ struct LockedHomeView: View {
                 Text(">_").font(mono(11, .bold)).foregroundColor(c.hi)
                 Text("todo.exe").font(mono(11)).foregroundColor(c.hi)
                 Spacer(minLength: 4)
-                Text(shortDate(date)).font(mono(10)).foregroundColor(c.dim).lineLimit(1)
+                Text(shortDate(date, snap.wd)).font(mono(10)).foregroundColor(c.dim).lineLimit(1)
             }
             .padding(.horizontal, 12)
             .frame(height: 26)
@@ -335,9 +364,11 @@ struct LockedHomeView: View {
                 (Text("C:\\todo> ").foregroundColor(c.dim) + Text("widget").foregroundColor(c.cmd))
                     .font(mono(11))
                 Text("Access is denied.").font(mono(12, .bold)).foregroundColor(c.warn)
-                Text("위젯은 PRO 기능이에요.").font(mono(11)).foregroundColor(c.fg)
+                Text(snap.t("w.locked.1", "Widgets are a PRO feature.")).font(mono(11)).foregroundColor(c.fg)
                 Spacer(minLength: 0)
-                (Text("앱에서 ").foregroundColor(c.dim) + Text("upgrade").foregroundColor(c.cmd) + Text(" 입력_").foregroundColor(c.dim))
+                (Text(snap.t("w.locked.pre", "In the app, type ")).foregroundColor(c.dim)
+                    + Text("upgrade").foregroundColor(c.cmd)
+                    + Text(snap.t("w.locked.post", "_")).foregroundColor(c.dim))
                     .font(mono(11))
                     .lineLimit(1)
             }
@@ -350,6 +381,7 @@ struct LockedHomeView: View {
 
 struct LockedAccessoryView: View {
     let family: WidgetFamily
+    let snap: TodoSnapshot
 
     var body: some View {
         switch family {
@@ -363,12 +395,12 @@ struct LockedAccessoryView: View {
             }
             .widgetAccentable()
         case .accessoryInline:
-            Text(">_ todo.exe · PRO 필요")
+            Text(snap.t("w.locked.inline", ">_ todo.exe · PRO required"))
         default:
             VStack(alignment: .leading, spacing: 1) {
                 Text("C:\\todo> widget").font(mono(12, .bold)).widgetAccentable()
                 Text("Access is denied.").font(mono(12))
-                Text("앱에서 upgrade").font(mono(12))
+                Text(snap.t("w.locked.rect", "In app: upgrade")).font(mono(12))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -396,9 +428,9 @@ struct TodoWidgetView: View {
     private var locked: some View {
         switch family {
         case .accessoryRectangular, .accessoryCircular, .accessoryInline:
-            LockedAccessoryView(family: family).containerBackground(for: .widget) { Color.clear }
+            LockedAccessoryView(family: family, snap: entry.snap).containerBackground(for: .widget) { Color.clear }
         default:
-            LockedHomeView(date: entry.date, family: family, c: colors)
+            LockedHomeView(date: entry.date, family: family, c: colors, snap: entry.snap)
                 .containerBackground(for: .widget) { colors.bg }
         }
     }
@@ -428,7 +460,7 @@ struct TodoWidget: Widget {
             TodoWidgetView(entry: entry)
         }
         .configurationDisplayName("todo.exe")
-        .description("남은 할 일과 진행률을 cmd 스타일로 보여줘요.")
+        .description(widgetDescription())
         .supportedFamilies([
             .systemSmall, .systemMedium, .systemLarge,
             .accessoryRectangular, .accessoryCircular, .accessoryInline,

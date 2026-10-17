@@ -1,9 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:todo_exe/l10n/l10n.dart';
 import 'package:todo_exe/logic/commands.dart';
 import 'package:todo_exe/models/task.dart';
 
 void main() {
   final now = DateTime(2026, 9, 29, 13, 0);
+
+  // 문구는 언어에 따라 달라지니 테스트는 한국어로 고정한다.
+  setUp(() => L10n.pref = 'ko');
 
   TodoData empty() => const TodoData(tasks: [], completions: [], nextId: 1);
 
@@ -148,6 +152,50 @@ void main() {
 
     test('stats 는 화면 이동을 요청한다', () {
       expect(runCommand(empty(), 'stats', now).route, 'stats');
+    });
+
+    test('lang 은 언어를 바꾸고 저장하며, 바뀐 언어로 답한다', () {
+      final out = runCommand(empty(), 'lang en', now);
+      expect(out.data.lang, 'en');
+      expect(L10n.current, Lang.en);
+      expect(out.lines.last.kind, LogKind.ok);
+      expect(out.lines.last.text, contains('English'));
+      expect(TodoData.fromJson(out.data.toJson()).lang, 'en');
+
+      // 바뀐 뒤의 메시지는 영어로 나온다.
+      final added = runCommand(out.data, 'add milk', now);
+      expect(added.lines.last.text, '+ #01 added');
+
+      expect(run(out.data, 'lang fr').lang, 'fr');
+      expect(L10n.current, Lang.fr);
+      expect(run(out.data, 'lang auto').lang, 'auto');
+    });
+
+    test('lang 에 없는 값을 쓰면 그대로 두고 에러, 인자 없으면 선택 화면', () {
+      var out = runCommand(empty(), 'lang xx', now);
+      expect(out.data.lang, 'auto');
+      expect(out.lines.last.kind, LogKind.err);
+      expect(L10n.pref, 'ko');
+
+      out = runCommand(empty(), 'lang', now);
+      expect(out.route, 'lang');
+      expect(out.lines.last.text, contains('ko'));
+    });
+
+    test('저장된 언어 값이 이상하면 auto', () {
+      final json = empty().toJson()..['lang'] = 'klingon';
+      expect(TodoData.fromJson(json).lang, 'auto');
+      expect(TodoData.fromJson(empty().toJson()..remove('lang')).lang, 'auto');
+    });
+
+    test('언어마다 튜토리얼과 에러 문구가 그 언어로 나온다', () {
+      for (final l in Lang.values) {
+        L10n.pref = l.code;
+        final tut = TodoData.initial(now).tasks.map((t) => t.text).toList();
+        expect(tut, [for (final k in ['tut.1', 'tut.2', 'tut.3', 'tut.4']) trIn(l, k)]);
+        final out = runCommand(empty(), 'done 9', now);
+        expect(out.lines.last.text, trIn(l, 'err.nf', {'a': '9'}));
+      }
     });
   });
 

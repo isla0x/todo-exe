@@ -1,3 +1,5 @@
+import 'dart:ui' show Locale;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,7 +14,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     SharedPreferences.setMockInitialValues({});
-    final store = TodoStore(clock: () => DateTime(2026, 9, 29, 13));
+    final store = TodoStore(clock: () => DateTime(2026, 9, 29, 13), deviceLocale: const Locale('ko', 'KR'));
     await store.load();
 
     await tester.pumpWidget(TodoExeApp(store: store));
@@ -56,7 +58,7 @@ void main() {
 
     SharedPreferences.setMockInitialValues({});
     final pro = ProController(); // init() 을 부르지 않으면 스토어에 연결하지 않는다.
-    final store = TodoStore(clock: () => DateTime(2026, 9, 29, 13), pro: pro);
+    final store = TodoStore(clock: () => DateTime(2026, 9, 29, 13), pro: pro, deviceLocale: const Locale('ko', 'KR'));
     await store.load();
 
     await tester.pumpWidget(TodoExeApp(store: store));

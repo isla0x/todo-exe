@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:todo_exe/l10n/l10n.dart';
 import 'package:todo_exe/logic/commands.dart';
 import 'package:todo_exe/logic/stats.dart';
 import 'package:todo_exe/models/task.dart';
@@ -6,6 +7,8 @@ import 'package:todo_exe/models/task.dart';
 void main() {
   // 2026-09-29 는 화요일
   final now = DateTime(2026, 9, 29, 13);
+
+  setUp(() => L10n.pref = 'ko');
 
   Completion c(int daysAgo, [String tag = 'work']) =>
       Completion(taskId: daysAgo, tag: tag, at: DateTime(2026, 9, 29 - daysAgo, 10));
@@ -53,5 +56,14 @@ void main() {
     expect(heatGlyph(0), '·');
     expect(heatGlyph(6), '█');
     expect(shortDate(now), '09.29 화');
+    L10n.pref = 'en';
+    expect(shortDate(now), '09.29 Tue');
+    L10n.pref = 'ja';
+    expect(shortDate(now), '09.29 火');
+    L10n.pref = 'zh';
+    expect(shortDate(now), '09.29 周二');
+    L10n.pref = 'fr';
+    expect(shortDate(now), '09.29 mar');
+    expect(weekdayNames().length, 7);
   });
 }

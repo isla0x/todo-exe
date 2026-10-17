@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:todo_exe/l10n/l10n.dart';
 import 'package:todo_exe/logic/commands.dart';
 import 'package:todo_exe/widget_sync.dart';
 
@@ -26,6 +27,19 @@ void main() {
     final todo = (s['todo'] as List).cast<Map<String, dynamic>>();
     expect(todo.map((e) => e['t']), ['보고서', '운동', '책 읽기']);
     expect(todo.first, {'n': '#02', 't': '보고서', 'p': 2, 'g': 'work'});
+  });
+
+  test('위젯 스냅샷에는 지금 언어의 문구와 요일 이름이 담긴다', () {
+    final d = const TodoData(tasks: [], completions: [], nextId: 1);
+    for (final l in Lang.values) {
+      L10n.pref = l.code;
+      final s = widgetSnapshot(d, now);
+      expect((s['wd'] as List).length, 7);
+      final strings = (s['s'] as Map).cast<String, String>();
+      expect(strings.keys, widgetStringKeys);
+      expect(strings['w.empty'], trIn(l, 'w.empty'));
+    }
+    L10n.pref = 'auto';
   });
 
   test('PRO 가 아니면 pro=false, 테마는 cmd 로 고정', () {

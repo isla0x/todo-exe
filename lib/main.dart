@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import 'l10n/l10n.dart';
 import 'pro/pro_controller.dart';
 import 'screens/boot_screen.dart';
 import 'state/todo_store.dart';
@@ -57,6 +59,12 @@ class _TodoExeAppState extends State<TodoExeApp> with WidgetsBindingObserver {
     store.systemBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
   }
 
+  /// 폰 언어를 바꾸면 (언어가 auto 일 때) 바로 따라간다.
+  @override
+  void didChangeLocales(List<Locale>? locales) {
+    store.deviceLocaleChanged(WidgetsBinding.instance.platformDispatcher.locale);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -66,6 +74,10 @@ class _TodoExeAppState extends State<TodoExeApp> with WidgetsBindingObserver {
         return MaterialApp(
           title: 'todo.exe',
           debugShowCheckedModeBanner: false,
+          // 앱 안 문구는 L10n 이 정하고, 이 값은 복사/붙여넣기 같은 시스템 문구와 글꼴 선택에 쓰인다.
+          locale: L10n.current.locale,
+          supportedLocales: [for (final l in Lang.values) l.locale],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           theme: _theme(p),
           builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
             value: (p.isLight ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light).copyWith(
